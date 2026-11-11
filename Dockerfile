@@ -12,6 +12,9 @@ WORKDIR /app
 # Apply security updates to the Debian runtime packages in the slim base image.
 # In particular, this refreshes zlib1g when the base image lags behind Debian
 # security repositories (Trivy otherwise reports fixed HIGH CVEs).
+# The package is intentionally upgraded to the repository's current security
+# version rather than pinned to a stale Debian revision.
+# hadolint ignore=DL3008
 RUN apt-get update \
     && apt-get install -y --no-install-recommends --only-upgrade zlib1g \
     && rm -rf /var/lib/apt/lists/*
@@ -33,7 +36,7 @@ RUN groupadd --gid 1000 appgroup \
     && useradd --uid 1000 --gid appgroup --create-home appuser
 
 # Executer FastAPI sans privileges root
-USER appuser
+USER 1000:1000
 # 8. Demarrer l'API
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 

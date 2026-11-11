@@ -22,7 +22,7 @@ RUN groupadd --gid 1000 mlflowgroup \
     && chown -R mlflowuser:mlflowgroup /tracking
 
 # Executer MLflow sans privileges root
-USER mlflowuser
+USER 1000:1000
 # Demarrer MLflow UI
 CMD ["mlflow", "ui", \
      "--backend-store-uri", "sqlite:////tracking/mlflow.db", \
