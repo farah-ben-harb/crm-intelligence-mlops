@@ -1,2 +1,3 @@
 # False positive: this specific immutable GHCR image tag is a Git commit SHA, not an API key.
+a9f93562fb49c73af2da46d751f102607f15ebf0:ansible/group_vars/all.yml:generic-api-key:9
 13f70c4efbf5adb4bc1cc571887488889131b80a:ansible/group_vars/all.yml:generic-api-key:9

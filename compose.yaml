@@ -9,14 +9,20 @@ services:
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 10s
-      timeout: 3s
-      retries: 3
+      timeout: 10s
+      start_period: 30s
+      retries: 6
     restart: unless-stopped
 
   mlflow:
     image: mini-crm-mlflow:v1
     ports:
       - "127.0.0.1:5001:5000"
+
+    environment:
+      MLFLOW_SERVER_ENABLE_JOB_EXECUTION: "false"
+      MLFLOW_SERVER_JOB_ENABLE_PERIODIC_TASKS: "false"
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /tracking/mlartifacts
 
     volumes:
       - type: bind
@@ -31,10 +37,11 @@ services:
       - crm_network
 
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
       interval: 10s
-      timeout: 3s
-      retries: 3
+      timeout: 10s
+      start_period: 30s
+      retries: 6
 
     restart: unless-stopped
 # 2. Définir ce réseau
