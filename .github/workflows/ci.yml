@@ -241,7 +241,8 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t mini-crm-api:ci .
-            - name: Start API for ZAP
+
+      - name: Start API for ZAP
         run: |
           docker run -d \
             --name mini-crm-api-zap \
