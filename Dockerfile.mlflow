@@ -24,10 +24,9 @@ RUN groupadd --gid 1000 mlflowgroup \
 # Executer MLflow sans privileges root
 USER mlflowuser
 # Demarrer MLflow UI
-CMD ["mlflow", "server", \
+CMD ["mlflow", "ui", \
      "--backend-store-uri", "sqlite:////tracking/mlflow.db", \
-     "--artifacts-destination", "/tracking/mlartifacts", \
-     "--allowed-hosts", "localhost:*,127.0.0.1:*", \
+     "--workers", "1", \
      "--host", "0.0.0.0", \
      "--port", "5000"]
 
