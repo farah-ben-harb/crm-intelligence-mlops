@@ -133,10 +133,98 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
+  semgrep:
+    name: SAST - Semgrep
+    runs-on: ubuntu-latest
 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Semgrep
+        run: python -m pip install semgrep==1.185.0
+
+      - name: Run Semgrep
+        run: semgrep scan --config auto --error app ml
+
+  dependency-audit:
+    name: Python Dependencies - pip-audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install pip-audit
+        run: python -m pip install pip-audit==2.10.1
+
+      - name: Audit dependencies
+        run: |
+          pip-audit -r requirements-api.txt
+          pip-audit -r requirements-ml.txt
+
+  dockerfile-lint:
+    name: Dockerfiles - Hadolint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Scan Dockerfile
+        run: docker run --rm -i hadolint/hadolint:latest < Dockerfile
+
+      - name: Scan MLflow Dockerfile
+        run: docker run --rm -i hadolint/hadolint:latest < Dockerfile.mlflow
+
+  iac-check:
+    name: Terraform - Checkov
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Checkov
+        run: python -m pip install checkov==3.4.4
+
+      - name: Scan Terraform
+        run: checkov -d terraform --quiet
   docker-build:
     name: Docker Build and Security Scan
-    needs: [tests, ml-training, sast, secrets, dependencies]
+    needs:
+      - tests
+      - ml-training
+      - sast
+      - secrets
+      - dependencies
+      - semgrep
+      - dependency-audit
+      - dockerfile-lint
+      - iac-check
     runs-on: ubuntu-latest
 
     steps:
@@ -153,7 +241,46 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t mini-crm-api:ci .
+            - name: Start API for ZAP
+        run: |
+          docker run -d \
+            --name mini-crm-api-zap \
+            -p 8000:8000 \
+            mini-crm-api:ci
 
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs mini-crm-api-zap
+          exit 1
+
+      - name: OWASP ZAP Baseline
+        run: |
+          mkdir -p zap-report
+          docker run --rm \
+            --network host \
+            -v "$PWD/zap-report:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://127.0.0.1:8000 \
+            -r zap-report.html \
+            -I
+
+      - name: Upload ZAP report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-baseline-report
+          path: zap-report/zap-report.html
+
+      - name: Stop API
+        if: always()
+        run: docker rm -f mini-crm-api-zap || true
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@v0.36.0
         with:
