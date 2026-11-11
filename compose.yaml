@@ -22,6 +22,7 @@ services:
     environment:
       MLFLOW_SERVER_ENABLE_JOB_EXECUTION: "false"
       MLFLOW_SERVER_JOB_ENABLE_PERIODIC_TASKS: "false"
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /tracking/mlartifacts
 
     volumes:
       - type: bind
