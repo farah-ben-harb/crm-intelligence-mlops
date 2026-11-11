@@ -9,9 +9,16 @@ ENV PYTHONUNBUFFERED=1
 # 3. Dossier de travail
 WORKDIR /app
 
+# Apply security updates to the Debian runtime packages in the slim base image.
+# In particular, this refreshes zlib1g when the base image lags behind Debian
+# security repositories (Trivy otherwise reports fixed HIGH CVEs).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends --only-upgrade zlib1g \
+    && rm -rf /var/lib/apt/lists/*
+
 # 4. Installer les dependances
 COPY requirements-api.txt .
-RUN pip install --no-cache-dir -r requirements-api.txt
+RUN pip install --no-cache-dir --default-timeout=300 --retries 10 -r requirements-api.txt
 
 # 5. Copier l'application
 COPY app/ ./app/
