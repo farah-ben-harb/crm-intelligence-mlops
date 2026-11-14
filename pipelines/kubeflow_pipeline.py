@@ -27,17 +27,22 @@ def compile_pipeline(output_path: Path) -> None:
             "pour compiler sans toucher à AWS."
         ) from exc
 
+    @dsl.container_component
+    def run_step(step: str):
+        return dsl.ContainerSpec(
+            image="python:3.12-slim",
+            command=["sh", "-c"],
+            args=["echo $0; test -n $0", step],
+        )
+
     @dsl.pipeline(name="mini-crm-reproducible-training")
     def training_pipeline():
-        # Component images and commands are intentionally supplied by the future
-        # platform environment; this local module only defines the stable graph.
+        previous = None
         for step in PIPELINE_STEPS:
-            dsl.ContainerOp(
-                name=step,
-                image="python:3.12-slim",
-                command=["sh", "-c"],
-                arguments=[f"echo {step}; test -n {step}"],
-            )
+            task = run_step(step)
+            if previous is not None:
+                task.after(previous)
+            previous = task
 
     Compiler().compile(training_pipeline, str(output_path))
 
