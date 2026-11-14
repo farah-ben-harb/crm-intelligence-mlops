@@ -1,0 +1,53 @@
+name: Mini CRM - CD Preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Immutable ECR image reference (repo@sha256:...)"
+        required: true
+        type: string
+      model_version:
+        description: "S3 VersionId of the candidate model"
+        required: true
+        type: string
+      model_sha256:
+        description: "Expected model SHA-256"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Validate approved deployment inputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Validate immutable references
+        env:
+          IMAGE: ${{ inputs.image }}
+          MODEL_VERSION: ${{ inputs.model_version }}
+          MODEL_SHA256: ${{ inputs.model_sha256 }}
+        run: |
+          python - <<'PY'
+          import os, re
+          image = os.environ["IMAGE"]
+          version = os.environ["MODEL_VERSION"]
+          sha = os.environ["MODEL_SHA256"]
+          assert re.search(r"@sha256:[0-9a-f]{64}$", image), image
+          assert version and re.fullmatch(r"[A-Za-z0-9._-]+", version), version
+          assert re.fullmatch(r"[0-9a-fA-F]{64}", sha), sha
+          print("CD_PREFLIGHT_OK")
+          PY
+      - name: Run local regression tests
+        run: |
+          python -m pip install -r requirements-api.txt -r requirements-dev.txt
+          python -m pytest -q
+          python -m ruff check .

@@ -70,13 +70,34 @@ jobs:
         run: python ml/validate_data.py
 
       - name: Train and evaluate
+        env:
+          GIT_SHA: ${{ github.sha }}
+          MODEL_VERSION: ${{ github.sha }}
+          MODEL_MIN_F1_MACRO: "0.60"
         run: python -m ml.train
+
+      - name: Verify model manifest and quality gate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path("models/model-manifest.json").read_text())
+          assert manifest["git_sha"] == "${{ github.sha }}"
+          assert manifest["quality_gate"]["passed"] is True
+          assert len(manifest["model"]["sha256"]) == 64
+          assert len(manifest["dataset"]["sha256"]) == 64
+          print("MODEL_MANIFEST_OK")
+          PY
 
       - name: Upload validated model
         uses: actions/upload-artifact@v4
         with:
-          name: trained-model
-          path: models/model.joblib
+          name: trained-model-${{ github.sha }}
+          path: |
+            models/model.joblib
+            models/model-manifest.json
+            models/evaluation.json
+            models/confusion_matrix.csv
           if-no-files-found: error
 
   sast:
@@ -236,7 +257,7 @@ jobs:
       - name: Download validated model
         uses: actions/download-artifact@v4
         with:
-          name: trained-model
+          name: trained-model-${{ github.sha }}
           path: models/
 
       - name: Build Docker image
@@ -313,7 +334,7 @@ jobs:
       - name: Download validated model
         uses: actions/download-artifact@v4
         with:
-          name: trained-model
+          name: trained-model-${{ github.sha }}
           path: models/
 
       - name: Login to GitHub Container Registry

@@ -129,8 +129,10 @@ Les conteneurs utilisent des utilisateurs non-root. Les ports sont liés à loca
 app/                 API FastAPI et chargement du modèle
 data/                dataset synthétique versionné
 ml/                  génération, validation et entraînement
+pipelines/           contrat de pipeline Kubeflow local
 models/              artefact de modèle servant l'API
 tests/               tests unitaires et API
+scripts/ml/          commande reproductible d'entraînement
 ansible/             préflight, déploiement Compose et vérifications
 terraform/           réseau Docker local
 docs/                audits et plan d'apprentissage AWS
@@ -146,7 +148,7 @@ docs/                audits et plan d'apprentissage AWS
 
 ## Roadmap
 
-Le plan pédagogique sans exécution Cloud est dans [`docs/AWS_LEARNING_PLAN.md`](docs/AWS_LEARNING_PLAN.md). Les prochaines étapes sont la validation ML sur un jeu indépendant, le durcissement DevSecOps avancé, puis l'apprentissage AWS manuel avec un budget contrôlé.
+Le plan pédagogique AWS est dans [`docs/AWS_LEARNING_PLAN.md`](docs/AWS_LEARNING_PLAN.md). Le pipeline MLOps reproductible et le contrat Kubeflow sont documentés dans [`docs/MLOPS_PIPELINE.md`](docs/MLOPS_PIPELINE.md). La promotion AWS reste explicitement contrôlée et aucune ressource Cloud n'est créée par l'entraînement local.
 
 ## Licence
 

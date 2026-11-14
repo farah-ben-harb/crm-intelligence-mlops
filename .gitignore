@@ -19,6 +19,7 @@ mlruns/
 mlartifacts/
 models/evaluation.json
 models/confusion_matrix.csv
+models/model-manifest.json
 
 # Terraform
 **/.terraform/
