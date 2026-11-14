@@ -35,3 +35,10 @@ models/confusion_matrix.csv
 .vscode/
 .idea/
 .ruff_cache/
+
+# Terraform - local files and secrets
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/*.tfvars
+!**/*.tfvars.example

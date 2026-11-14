@@ -1,5 +1,7 @@
 """Load only a trusted, locally packaged classifier artifact."""
 
+import hashlib
+import hmac
 import logging
 import os
 from functools import lru_cache
@@ -26,6 +28,12 @@ class ModelUnavailable(RuntimeError):
 def get_model() -> Any:
     """Load once on first use so an absent artifact does not kill the API."""
     try:
+        expected_sha = os.environ.get("MINI_CRM_MODEL_SHA256")
+        if expected_sha:
+            actual_sha = hashlib.sha256(MODEL_PATH.read_bytes()).hexdigest()
+            if not hmac.compare_digest(actual_sha, expected_sha.lower()):
+                raise ValueError("Model SHA-256 mismatch")
+
         model = joblib.load(MODEL_PATH)
         if not callable(getattr(model, "predict", None)):
             raise TypeError("Artifact does not implement predict")
