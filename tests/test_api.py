@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 import joblib
@@ -67,3 +68,36 @@ def test_model_loader_uses_configured_artifact(tmp_path, monkeypatch):
     response = client.post("/predict", json={"skills": "Python"})
     assert response.status_code == 200
     assert response.json() == {"domain": "Backend"}
+
+
+def test_model_loader_rejects_sha256_mismatch(tmp_path, monkeypatch):
+    path = Path(tmp_path / "model.joblib")
+    classifier = DummyClassifier(strategy="constant", constant="Backend")
+    classifier.fit([["Python"]], ["Backend"])
+    joblib.dump(classifier, path)
+    monkeypatch.setattr(model, "MODEL_PATH", path)
+    monkeypatch.setenv("MINI_CRM_MODEL_SHA256", "0" * 64)
+
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Model unavailable"}
+
+
+def test_model_info_exposes_verified_provenance(tmp_path, monkeypatch):
+    path = Path(tmp_path / "model.joblib")
+    classifier = DummyClassifier(strategy="constant", constant="Backend")
+    classifier.fit([["Python"]], ["Backend"])
+    joblib.dump(classifier, path)
+    monkeypatch.setattr(model, "MODEL_PATH", path)
+    monkeypatch.setenv("MINI_CRM_MODEL_SOURCE", "s3://mini-crm-models/models/model.joblib")
+    monkeypatch.setenv("MINI_CRM_MODEL_VERSION", "test-version")
+
+    response = client.get("/model-info")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "source": "s3://mini-crm-models/models/model.joblib",
+        "version_id": "test-version",
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+    }

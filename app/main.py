@@ -7,7 +7,8 @@ import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
-from app.model import MODEL_PATH, ModelUnavailable, get_model
+from app import model
+from app.model import ModelUnavailable, get_model
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -72,7 +73,7 @@ def model_info() -> dict[str, str]:
     """Expose the loaded model's deployment metadata."""
     try:
         get_model()
-        digest = hashlib.sha256(MODEL_PATH.read_bytes()).hexdigest()
+        digest = hashlib.sha256(model.MODEL_PATH.read_bytes()).hexdigest()
     except (ModelUnavailable, OSError) as exc:
         raise HTTPException(
             status_code=503,
