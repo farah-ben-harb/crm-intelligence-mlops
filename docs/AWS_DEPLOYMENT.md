@@ -46,7 +46,7 @@ Conserver le `CommandId`, puis récupérer stdout/stderr avec `ssm get-command-i
 La promotion exige une référence ECR par digest (`repo@sha256:...`), une version S3 existante et un SHA-256 vérifié. Elle conserve l'inspection Docker et l'image précédente dans `/opt/mini-crm/deployments/<timestamp>/`.
 
 ```powershell
-.\scripts\aws\deploy-production.ps1 `
+.\scripts\aws\promote-production.ps1 `
   -Image "251538491265.dkr.ecr.eu-north-1.amazonaws.com/mini-crm-api@sha256:<digest>" `
   -ModelPath "/opt/mini-crm/models/RNpfkR7F9N1cdIgR6w2YS2K4G07QnvDz.joblib" `
   -ModelVersion "RNpfkR7F9N1cdIgR6w2YS2K4G07QnvDz" `
