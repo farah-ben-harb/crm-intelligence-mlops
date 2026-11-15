@@ -39,6 +39,15 @@ La CI exécute tests, entraînement, quality gate, contrôles de sécurité et b
 
 `pipelines/kubeflow_pipeline.py` définit le contrat composable : `prepare_data → train → evaluate → validate → register`. Le SDK KFP n'est pas une dépendance par défaut ; la compilation nécessite un environnement local dédié avec `kfp`. Aucun pipeline Kubernetes complet n'a été déclaré exécuté.
 
+## MLflow Model Registry
+
+Le modèle candidat est enregistré dans le Registry MLflow local SQLite sous le
+nom `MiniCRM-Classifier`. L'alias `candidate` désigne la version à tester.
+
+Le script `ml/register_candidate.py` vérifie le manifeste, le SHA-256 et le
+rechargement du modèle par son alias Registry. Cette opération ne publie pas
+sur S3 et ne modifie pas la production EC2.
+
 ## Preuves et limites
 
 - MLflow est local et SQLite ; aucun serveur public n'est déployé.

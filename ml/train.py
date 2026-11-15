@@ -39,6 +39,19 @@ MANIFEST_PATH = BASE_DIR / "models" / "model-manifest.json"
 RANDOM_STATE = 42
 
 
+def _read_float_env(name: str, default: float) -> float:
+    """Read a decimal environment variable with Windows locale tolerance."""
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    try:
+        return float(raw_value.strip().replace(",", "."))
+    except ValueError as exc:
+        raise ValueError(
+            f"{name} doit être un nombre décimal, reçu: {raw_value!r}"
+        ) from exc
+
+
 def build_model() -> Pipeline:
     return Pipeline(
         [
@@ -93,8 +106,8 @@ def train_and_evaluate() -> dict[str, object]:
             handle.write(label + "," + ",".join(str(value) for value in values) + "\n")
 
     joblib.dump(build_model().fit(X, y), MODEL_PATH)
-    min_f1_macro = float(
-        os.environ.get("MODEL_MIN_F1_MACRO", str(DEFAULT_MIN_F1_MACRO))
+    min_f1_macro = _read_float_env(
+        "MODEL_MIN_F1_MACRO", DEFAULT_MIN_F1_MACRO
     )
     quality_gate = evaluate_quality(metrics, min_f1_macro)
     metrics["quality_gate"] = quality_gate

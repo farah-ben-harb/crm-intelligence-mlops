@@ -6,8 +6,32 @@ import os
 import subprocess
 from pathlib import Path
 
-from kfp import compiler, dsl, local
-from kfp.dsl import Artifact, Dataset, Input, Metrics, Model, Output
+try:
+    from kfp import compiler, dsl, local
+    from kfp.dsl import Artifact, Dataset, Input, Metrics, Model, Output
+
+    KFP_AVAILABLE = True
+except ModuleNotFoundError:  # pragma: no cover - exercised by the base venv
+    KFP_AVAILABLE = False
+
+    class _KfpType:
+        @classmethod
+        def __class_getitem__(cls, _item):
+            return cls
+
+    class _DslFallback:
+        @staticmethod
+        def component(*_args, **_kwargs):
+            return lambda function: function
+
+        @staticmethod
+        def pipeline(*_args, **_kwargs):
+            return lambda function: function
+
+    compiler = None
+    dsl = _DslFallback()
+    local = None
+    Artifact = Dataset = Input = Metrics = Model = Output = _KfpType
 
 PIPELINE_STEPS = (
     "prepare_data",
@@ -21,6 +45,14 @@ PIPELINE_STEPS = (
 def pipeline_steps() -> tuple[str, ...]:
     """Return the stable ordered contract of the training pipeline."""
     return PIPELINE_STEPS
+
+
+def _require_kfp() -> None:
+    if not KFP_AVAILABLE:
+        raise RuntimeError(
+            "KFP n'est pas installé. Utilisez .venv-kfp pour compiler ou "
+            "exécuter le pipeline."
+        )
 
 
 class _LocalArtifact:
@@ -306,6 +338,7 @@ def main():
     args = parser.parse_args()
 
     if args.action == "compile":
+        _require_kfp()
         destination = Path("pipelines/mini_crm_pipeline.yaml")
         compiler.Compiler().compile(
             pipeline_func=training_pipeline,
@@ -320,6 +353,7 @@ def main():
     dataset_csv = Path("data/profiles.csv").read_text(encoding="utf-8")
 
     if args.runner == "python":
+        _require_kfp()
         _run_python_pipeline(
             dataset_csv=dataset_csv,
             git_sha=git_sha,
@@ -328,6 +362,7 @@ def main():
         print("KFP_LOCAL_RUN_COMPLETE")
         return
 
+    _require_kfp()
     runner = (
         local.DockerRunner()
         if args.runner == "docker"
