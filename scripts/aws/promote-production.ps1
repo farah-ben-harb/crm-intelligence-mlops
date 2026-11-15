@@ -8,6 +8,7 @@ param(
     [string]$Profile = "mini-crm",
     [string]$Region = "eu-north-1",
     [string]$LogGroupName = "/mini-crm/api",
+    [string]$ModelSource = "",
     [switch]$UseCloudWatchLogs,
     [switch]$WhatIf
 )

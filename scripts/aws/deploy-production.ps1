@@ -8,6 +8,8 @@ param(
     [string]$Profile = "mini-crm",
     [string]$Region = "eu-north-1",
     [string]$LogGroupName = "/mini-crm/api",
+    [string]$ModelSource = "",
+    [string]$LockPath = "/opt/mini-crm/deployments/.production-release.lock",
     [switch]$UseCloudWatchLogs = $true,
     [switch]$WhatIf
 )
@@ -30,7 +32,12 @@ $ecr = (& $aws ecr describe-images --profile $Profile --region $Region --registr
 if ($LASTEXITCODE -ne 0 -or -not $ecr -or $ecr -ne $digest) { throw "Digest ECR absent ou différent : $Image" }
 
 $bucket = "mini-crm-models-$account-$Region"
-& $aws s3api head-object --profile $Profile --region $Region --bucket $bucket --key models/model.joblib --version-id $ModelVersion --output json | Out-Null
+if (-not $ModelSource) { $ModelSource = "s3://$bucket/models/model.joblib" }
+if ($ModelSource -notmatch '^s3://([^/]+)/(.+)$') { throw "ModelSource doit être une URI s3:// valide." }
+$sourceBucket = $Matches[1]
+$sourceKey = $Matches[2]
+if ($sourceBucket -ne $bucket) { throw "Le bucket du modèle ne correspond pas au compte/région attendus." }
+& $aws s3api head-object --profile $Profile --region $Region --bucket $sourceBucket --key $sourceKey --version-id $ModelVersion --output json | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Version S3 introuvable : $ModelVersion" }
 
 if ($UseCloudWatchLogs) {
@@ -42,11 +49,48 @@ $logArgs = if ($UseCloudWatchLogs) {
     $stream = "production-release-$(Get-Date -Format yyyyMMdd-HHmmss)"
     "--log-driver awslogs --log-opt awslogs-region=$Region --log-opt awslogs-group=$LogGroupName --log-opt awslogs-stream=$stream --log-opt awslogs-create-group=false"
 } else { "" }
-$runCommand = 'docker run -d --name mini-crm-api -p 127.0.0.1:8002:8000 -v "${MODEL_PATH}:/app/models/model.joblib:ro" -e MINI_CRM_MODEL_PATH=/app/models/model.joblib -e MINI_CRM_MODEL_SOURCE=s3://' + $bucket + '/models/model.joblib -e MINI_CRM_MODEL_VERSION="${MODEL_VERSION}" -e MINI_CRM_MODEL_SHA256="${MODEL_SHA}" ${LOG_ARGS} "${IMAGE}"'
+$sanitizeBackup = @'
+python3 - "$backup_dir/production.inspect.sanitized.json" <<'PY'
+import json
+import subprocess
+import sys
+
+obj = json.loads(subprocess.check_output(["docker", "inspect", "mini-crm-api"], text=True))[0]
+env = {}
+for item in obj.get("Config", {}).get("Env") or []:
+    key, _, value = item.partition("=")
+    upper = key.upper()
+    if any(token in upper for token in ("SECRET", "TOKEN", "PASSWORD", "PRIVATE_KEY", "ACCESS_KEY")):
+        env[key] = "<redacted>"
+    else:
+        env[key] = value
+
+safe = {
+    "name": obj.get("Name"),
+    "image": obj.get("Config", {}).get("Image"),
+    "state": obj.get("State", {}).get("Status"),
+    "environment": env,
+    "mounts": obj.get("Mounts", []),
+    "ports": obj.get("HostConfig", {}).get("PortBindings", {}),
+    "restart_policy": obj.get("HostConfig", {}).get("RestartPolicy", {}),
+    "log_config": obj.get("HostConfig", {}).get("LogConfig", {}),
+    "network_mode": obj.get("HostConfig", {}).get("NetworkMode"),
+}
+with open(sys.argv[1], "w", encoding="utf-8") as handle:
+    json.dump(safe, handle, indent=2)
+PY
+chmod 600 "$backup_dir/production.inspect.sanitized.json"
+'@
+$runCommand = 'docker run -d --name mini-crm-api -p 127.0.0.1:8002:8000 -v "${MODEL_PATH}:/app/models/model.joblib:ro" -e MINI_CRM_MODEL_PATH=/app/models/model.joblib -e MINI_CRM_MODEL_SOURCE="${MODEL_SOURCE}" -e MINI_CRM_MODEL_VERSION="${MODEL_VERSION}" -e MINI_CRM_MODEL_SHA256="${MODEL_SHA}" ${LOG_ARGS} "${IMAGE}"'
 $commands = @(
     "set -euo pipefail",
+    ("LOCK_PATH='{0}'" -f $LockPath),
+    'mkdir "$LOCK_PATH"',
+    'cleanup_lock() { rmdir "$LOCK_PATH" 2>/dev/null || true; }',
+    'trap cleanup_lock EXIT',
     ("IMAGE='{0}'" -f $Image),
     ("MODEL_PATH='{0}'" -f $ModelPath),
+    ("MODEL_SOURCE='{0}'" -f $ModelSource),
     ("MODEL_VERSION='{0}'" -f $ModelVersion),
     ("MODEL_SHA='{0}'" -f $ModelSha256),
     ("LOG_ARGS='{0}'" -f $logArgs),
@@ -57,13 +101,16 @@ $commands = @(
     ('info=$(curl -fsS http://127.0.0.1:8004/model-info); echo "$info" | grep -F ''"version_id":"{0}"'' >/dev/null; echo "$info" | grep -F ''"sha256":"{1}"'' >/dev/null' -f $ModelVersion, $ModelSha256),
     'curl -fsS -X POST -H ''Content-Type: application/json'' -d ''{"skills":"Python Docker Terraform"}'' http://127.0.0.1:8004/predict >/dev/null',
     'backup_dir=/opt/mini-crm/deployments/$(date +%Y%m%d-%H%M%S); mkdir -p "$backup_dir"',
-    'docker inspect mini-crm-api > "$backup_dir/production.inspect.json"',
+    $sanitizeBackup,
     'previous_image=$(docker inspect --format ''{{.Config.Image}}'' mini-crm-api)',
     'previous_model=$(docker inspect --format ''{{range .Mounts}}{{if eq .Destination "/app/models/model.joblib"}}{{.Source}}{{end}}{{end}}'' mini-crm-api)',
-    'printf ''IMAGE=%s\nMODEL=%s\n'' "$previous_image" "$previous_model" > "$backup_dir/rollback.env"',
-    'rollback() { if [ -n "$previous_image" ]; then docker rm -f mini-crm-api 2>/dev/null || true; docker run -d --name mini-crm-api -p 127.0.0.1:8002:8000 -v "${previous_model:-$MODEL_PATH}:/app/models/model.joblib:ro" -e MINI_CRM_MODEL_PATH=/app/models/model.joblib "$previous_image" || true; sleep 5; curl -fsS http://127.0.0.1:8002/health >/dev/null || true; curl -fsS http://127.0.0.1:8002/ready >/dev/null || true; fi; }',
-    'trap ''rc=$?; if [ "$rc" -ne 0 ]; then rollback; fi; exit "$rc"'' EXIT',
-    "docker rm -f mini-crm-api",
+    'printf ''IMAGE=%s\nMODEL=%s\nMODEL_SOURCE=%s\n'' "$previous_image" "$previous_model" "$(docker inspect --format ''{{range .Config.Env}}{{println .}}{{end}}'' mini-crm-api | grep -E ''^MINI_CRM_MODEL_(SOURCE|VERSION|SHA256)='' | tr ''\n'' '' '')" > "$backup_dir/rollback.env"',
+    'backup_container=mini-crm-api-rollback-$(date +%Y%m%d-%H%M%S); docker rename mini-crm-api "$backup_container"; docker stop "$backup_container" >/dev/null',
+    'printf ''BACKUP_CONTAINER=%s\n'' "$backup_container" >> "$backup_dir/rollback.env"',
+    'DEPLOY_SUCCESS=0',
+    'rollback_on_exit() { rc=$?; trap - EXIT; if [ "$DEPLOY_SUCCESS" -eq 1 ]; then rmdir "$LOCK_PATH" 2>/dev/null || true; exit "$rc"; fi; set +e; restore_ok=0; docker rm -f mini-crm-api >/dev/null 2>&1 || true; if docker rename "$backup_container" mini-crm-api >/dev/null 2>&1 && docker start mini-crm-api >/dev/null 2>&1; then sleep 5; curl -fsS http://127.0.0.1:8002/health >/dev/null && curl -fsS http://127.0.0.1:8002/ready >/dev/null && curl -fsS http://127.0.0.1:8002/model-info >/dev/null && curl -fsS -X POST -H ''Content-Type: application/json'' -d ''{"skills":"Python Docker Terraform"}'' http://127.0.0.1:8002/predict >/dev/null && restore_ok=1; fi; rmdir "$LOCK_PATH" 2>/dev/null || true; if [ "$restore_ok" -ne 1 ]; then echo ''ROLLBACK_FAILED''; exit 90; fi; echo ''ROLLBACK_SUCCESS''; exit "$rc"; }',
+    'trap rollback_on_exit EXIT',
+    "docker rm -f mini-crm-api >/dev/null 2>&1 || true",
     $runCommand,
     "sleep 5",
     'curl -fsS http://127.0.0.1:8002/health',
@@ -71,7 +118,9 @@ $commands = @(
     'curl -fsS http://127.0.0.1:8002/model-info',
     'curl -fsS -X POST -H ''Content-Type: application/json'' -d ''{"skills":"Python Docker Terraform"}'' http://127.0.0.1:8002/predict',
     'docker inspect mini-crm-api --format ''IMAGE={{.Config.Image}}''',
-    'echo "BACKUP_DIR=$backup_dir"'
+    'DEPLOY_SUCCESS=1',
+    'echo "BACKUP_DIR=$backup_dir"',
+    'echo "BACKUP_CONTAINER=$backup_container"'
 )
 $params = @{ commands = $commands } | ConvertTo-Json -Compress
 if ($WhatIf) {

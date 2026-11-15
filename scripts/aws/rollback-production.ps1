@@ -1,12 +1,13 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true)][string]$PreviousImage,
-    [Parameter(Mandatory=$true)][string]$ModelPath,
+    [string]$PreviousImage = "",
+    [string]$ModelPath = "",
     [string]$ModelVersion = "",
     [string]$ModelSha256 = "",
     [string]$InstanceId = "i-049bfd217926eb2b2",
     [string]$Profile = "mini-crm",
     [string]$Region = "eu-north-1",
+    [string]$BackupContainer = "",
     [switch]$UseCloudWatchLogs = $true,
     [switch]$WhatIf
 )
@@ -15,8 +16,34 @@ $ErrorActionPreference = "Stop"
 $aws = (Get-Command aws -ErrorAction SilentlyContinue).Source
 if (-not $aws -and (Test-Path "C:\Program Files\Amazon\AWSCLIV2\aws.exe")) { $aws = "C:\Program Files\Amazon\AWSCLIV2\aws.exe" }
 if (-not $aws) { throw "AWS CLI introuvable." }
-if ($PreviousImage -notmatch '@sha256:[0-9a-f]{64}$') { throw "Le rollback exige une image ECR par digest." }
+if (-not $BackupContainer -and $PreviousImage -notmatch '@sha256:[0-9a-f]{64}$') { throw "Le rollback exige une image ECR par digest." }
 if ($ModelSha256 -and $ModelSha256 -notmatch '^[0-9a-fA-F]{64}$') { throw "SHA-256 du modèle invalide." }
+
+if ($BackupContainer) {
+    $commands = @(
+        "set -euo pipefail",
+        ("BACKUP_CONTAINER='{0}'" -f $BackupContainer),
+        'test "$(docker inspect -f ''{{.State.Status}}'' "$BACKUP_CONTAINER")" = exited',
+        'docker rm -f mini-crm-api >/dev/null 2>&1 || true',
+        'docker rename "$BACKUP_CONTAINER" mini-crm-api',
+        'docker start mini-crm-api >/dev/null',
+        'sleep 5',
+        'curl -fsS http://127.0.0.1:8002/health',
+        'curl -fsS http://127.0.0.1:8002/ready',
+        'curl -fsS http://127.0.0.1:8002/model-info',
+        'curl -fsS -X POST -H ''Content-Type: application/json'' -d ''{"skills":"Python Docker Terraform"}'' http://127.0.0.1:8002/predict',
+        'docker inspect mini-crm-api --format ''IMAGE={{.Config.Image}} DRIVER={{.HostConfig.LogConfig.Type}}''',
+        'echo "ROLLBACK_BACKUP_CONTAINER_RESTORED=$BACKUP_CONTAINER"'
+    )
+    $params = @{ commands = $commands } | ConvertTo-Json -Compress
+    if ($WhatIf) { $commands | ForEach-Object { Write-Host $_ }; return }
+    $result = & $aws ssm send-command --profile $Profile --region $Region --instance-ids $InstanceId --document-name AWS-RunShellScript --comment "Mini CRM backup container rollback" --parameters $params --output json
+    if ($LASTEXITCODE -ne 0) { throw "SSM send-command échoué." }
+    $commandId = (($result | ConvertFrom-Json).Command.CommandId).ToString()
+    Write-Output "COMMAND_ID=$commandId"
+    Write-Host "Rollback exact du conteneur de backup envoyé. Attendre Success avant de considérer la restauration réussie."
+    return
+}
 
 $envArgs = "-e MINI_CRM_MODEL_PATH=/app/models/model.joblib"
 if ($ModelVersion) { $envArgs += " -e MINI_CRM_MODEL_VERSION='$ModelVersion'" }

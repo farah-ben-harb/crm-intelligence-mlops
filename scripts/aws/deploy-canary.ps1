@@ -8,6 +8,7 @@ param(
     [string]$Profile = "mini-crm",
     [string]$Region = "eu-north-1",
     [string]$ModelSource = "s3://mini-crm-models-251538491265-eu-north-1/models/model.joblib",
+    [string]$LockPath = "/opt/mini-crm/deployments/.canary-release.lock",
     [switch]$UseCloudWatchLogs = $true,
     [switch]$WhatIf
 )
@@ -24,6 +25,10 @@ $logArgs = if ($UseCloudWatchLogs) {
 
 $commands = @(
     "set -euo pipefail",
+    ("LOCK_PATH='{0}'" -f $LockPath),
+    'mkdir "$LOCK_PATH"',
+    'cleanup_release_lock() { rmdir "$LOCK_PATH" 2>/dev/null || true; }',
+    'trap cleanup_release_lock EXIT',
     "echo 'Inspecting existing canary'",
     "docker ps -a --filter name=mini-crm-api-v2-canary --format '{{.ID}} {{.Status}}' || true",
     ("test -r '{0}'" -f $ModelPath),
