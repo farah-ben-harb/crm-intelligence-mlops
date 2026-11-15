@@ -58,6 +58,12 @@ def _single_object(s3: Any, bucket: str, prefix: str, suffix: str) -> str:
     return keys[0]
 
 
+def _task_object(
+    s3: Any, bucket: str, prefix: str, task_name: str, suffix: str
+) -> str:
+    return _single_object(s3, bucket, f"{prefix}{task_name}/", suffix)
+
+
 def _download(s3: Any, bucket: str, key: str, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     s3.download_file(bucket, key, str(destination))
@@ -111,13 +117,19 @@ def import_kfp_run(
     )
 
     paths = {
-        "trained_model": _single_object(s3, artifact_bucket, prefix, "/trained_model"),
-        "test_set": _single_object(s3, artifact_bucket, prefix, "/test_set"),
-        "source": _single_object(s3, artifact_bucket, prefix, "/source"),
-        "gate": _single_object(s3, artifact_bucket, prefix, "/gate"),
-        "manifest": _single_object(s3, artifact_bucket, prefix, "/manifest"),
-        "evaluate_logs": _single_object(
-            s3, artifact_bucket, prefix, "/executor-logs-0"
+        "trained_model": _task_object(
+            s3, artifact_bucket, prefix, "train-model", "/trained_model"
+        ),
+        "test_set": _task_object(
+            s3, artifact_bucket, prefix, "prepare-data", "/test_set"
+        ),
+        "source": _task_object(s3, artifact_bucket, prefix, "prepare-data", "/source"),
+        "gate": _task_object(s3, artifact_bucket, prefix, "validate-model", "/gate"),
+        "manifest": _task_object(
+            s3, artifact_bucket, prefix, "register-candidate", "/manifest"
+        ),
+        "evaluate_logs": _task_object(
+            s3, artifact_bucket, prefix, "evaluate-model", "/executor-logs-0"
         ),
     }
 

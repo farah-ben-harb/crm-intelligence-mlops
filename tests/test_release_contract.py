@@ -46,3 +46,13 @@ def test_canary_deployment_returns_command_id_and_has_lock() -> None:
     script = read_script("deploy-canary.ps1")
     assert ".canary-release.lock" in script
     assert 'Write-Output "COMMAND_ID=$commandId"' in script
+
+
+def test_kfp_candidate_publication_is_immutable_and_traceable() -> None:
+    script = read_script("publish-kfp-candidate.ps1")
+    assert "candidate-published" in script
+    assert "candidates/$($evidence.git_sha)/model.joblib" in script
+    assert "S3_CANDIDATE_PUBLISHED" in script
+    assert "aucun écrasement autorisé" in script
+    assert "downloadSha" in script
+    assert "production_changed = $false" in script
