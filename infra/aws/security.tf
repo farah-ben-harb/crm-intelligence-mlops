@@ -10,6 +10,7 @@ resource "aws_security_group" "crm" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "https" {
+  description       = "HTTPS for package, ECR and S3 access"
   security_group_id = aws_security_group.crm.id
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 443
@@ -18,6 +19,7 @@ resource "aws_vpc_security_group_egress_rule" "https" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "http" {
+  description       = "HTTP for package repositories"
   security_group_id = aws_security_group.crm.id
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 80

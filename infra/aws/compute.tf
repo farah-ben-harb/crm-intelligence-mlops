@@ -5,6 +5,7 @@ data "aws_ssm_parameter" "al2023" {
 resource "aws_instance" "crm" {
   ami           = data.aws_ssm_parameter.al2023.value
   instance_type = "t3.small"
+  ebs_optimized = true
 
   subnet_id                   = "subnet-07f4eba661f58a420"
   associate_public_ip_address = true
