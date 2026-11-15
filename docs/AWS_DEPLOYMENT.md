@@ -67,6 +67,11 @@ Un rollback applicatif restaure l'image et le conteneur. Un rollback ML restaure
 
 `infra/aws/cloudwatch.tf` prépare un Log Group `/mini-crm/api` avec une rétention de 7 jours, un filtre d'erreurs, une alarme CPU EC2 et le dashboard `MiniCRM-Observability`. `cloudwatch_iam.tf` limite le rôle EC2 à `CreateLogStream`, `DescribeLogStreams` et `PutLogEvents` sur ce groupe.
 
+Le scan Checkov conserve deux exceptions S3 documentées pour ce démonstrateur : les notifications d'événements
+(`CKV2_AWS_62`) n'ont aucun consommateur prévu et une lifecycle policy (`CKV2_AWS_61`) imposerait une règle de
+rétention métier non définie. Le bucket reste versionné, chiffré, privé et protégé contre les accès publics. Ces
+fonctions pourront être ajoutées dans une évolution approuvée, avec `terraform apply` contrôlé.
+
 Le driver Docker `awslogs` n'est activé par la promotion que si le Log Group existe déjà (`-UseCloudWatchLogs`). Tant que le state Terraform officiel n'est pas récupéré, aucun Log Group, rôle ou alarme n'est créé automatiquement.
 
 ```mermaid

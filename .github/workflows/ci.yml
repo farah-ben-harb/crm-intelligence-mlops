@@ -291,6 +291,8 @@ jobs:
           --skip-check CKV_AWS_18
           --skip-check CKV_AWS_144
           --skip-check CKV_AWS_145
+          --skip-check CKV2_AWS_62
+          --skip-check CKV2_AWS_61
   docker-build:
     name: Docker Build and Security Scan
     needs:
