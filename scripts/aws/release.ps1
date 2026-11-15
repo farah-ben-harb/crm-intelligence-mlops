@@ -38,10 +38,18 @@ if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
 }
 $Manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
 if (-not $Manifest.quality_gate.passed) { throw "Quality gate du manifeste négative." }
-if ($Manifest.model.sha256 -ne $ModelSha256.ToLowerInvariant()) {
+$manifestModelSha = if ($Manifest.model -and $Manifest.model.sha256) {
+    [string]$Manifest.model.sha256
+} elseif ($Manifest.model_sha256) {
+    [string]$Manifest.model_sha256
+} else {
+    ""
+}
+if ($manifestModelSha -ne $ModelSha256.ToLowerInvariant()) {
     throw "Le SHA du manifeste ne correspond pas au candidat."
 }
-if ($ModelKey -notmatch [regex]::Escape([string]$Manifest.git_sha)) {
+$manifestGitSha = [string]$Manifest.git_sha
+if ($ModelKey -notmatch "^candidates/$([regex]::Escape($manifestGitSha))/model\.joblib$") {
     throw "La clé S3 candidate ne correspond pas au Git SHA du manifeste."
 }
 
@@ -69,6 +77,9 @@ $report = [ordered]@{
     model_version = $ModelVersion
     model_sha256 = $ModelSha256.ToLowerInvariant()
     manifest_git_sha = [string]$Manifest.git_sha
+    manifest_kfp_run_id = [string]$Manifest.kfp.run_id
+    manifest_mlflow_run_id = [string]$Manifest.mlflow.run_id
+    manifest_registry_version = [string]$Manifest.mlflow.registry_version
     quality_gate = $true
     production_promotion = "not-executed"
     production_unchanged = $true

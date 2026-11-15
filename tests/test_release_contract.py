@@ -20,6 +20,8 @@ def test_release_requires_immutable_artifacts_and_manifest() -> None:
     assert "candidates/[0-9a-f]{40}/model\\.joblib" in script
     assert "ManifestPath" in script
     assert "quality_gate.passed" in script
+    assert "manifestModelSha" in script
+    assert "manifest_kfp_run_id" in script
     assert "head.Metadata.sha256" in script
     assert 'if ($WhatIf)' in script
     assert 'production_unchanged = $true' in script
