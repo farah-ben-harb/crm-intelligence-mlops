@@ -1,6 +1,7 @@
 
 # Python
 .venv/
+.venv-kfp/
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -36,6 +37,7 @@ models/model-manifest.json
 .vscode/
 .idea/
 .ruff_cache/
+pipelines/local_outputs/
 
 # Terraform - local files and secrets
 **/.terraform/

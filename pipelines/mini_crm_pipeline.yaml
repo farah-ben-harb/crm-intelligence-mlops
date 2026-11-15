@@ -1,0 +1,429 @@
+# PIPELINE DEFINITION
+# Name: mini-crm-training-v2
+# Inputs:
+#    dataset_csv: str
+#    git_sha: str
+#    min_f1: float [Default: 0.6]
+components:
+  comp-evaluate-model:
+    executorLabel: exec-evaluate-model
+    inputDefinitions:
+      artifacts:
+        test_set:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        trained_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+  comp-prepare-data:
+    executorLabel: exec-prepare-data
+    inputDefinitions:
+      parameters:
+        raw_csv:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        source:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        test_set:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        train_set:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-register-candidate:
+    executorLabel: exec-register-candidate
+    inputDefinitions:
+      artifacts:
+        gate:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+        source:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+        trained_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+      parameters:
+        git_sha:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        manifest:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+  comp-train-model:
+    executorLabel: exec-train-model
+    inputDefinitions:
+      artifacts:
+        train_set:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        trained_model:
+          artifactType:
+            schemaTitle: system.Model
+            schemaVersion: 0.0.1
+  comp-validate-model:
+    executorLabel: exec-validate-model
+    inputDefinitions:
+      artifacts:
+        metrics:
+          artifactType:
+            schemaTitle: system.Metrics
+            schemaVersion: 0.0.1
+      parameters:
+        min_f1:
+          parameterType: NUMBER_DOUBLE
+    outputDefinitions:
+      artifacts:
+        gate:
+          artifactType:
+            schemaTitle: system.Artifact
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-evaluate-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'scikit-learn==1.9.1'\
+          \ 'joblib==1.6.0'  &&  python3 -m pip install --quiet --no-warn-script-location\
+          \ 'kfp==2.18.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"\
+          3.9\"' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate_model(\n    trained_model: Input[Model],\n    test_set:\
+          \ Input[Dataset],\n    metrics: Output[Metrics],\n):\n    import json\n\n\
+          \    import joblib\n    from sklearn.metrics import (\n        accuracy_score,\n\
+          \        confusion_matrix,\n        f1_score,\n    )\n\n    with open(test_set.path,\
+          \ encoding=\"utf-8\") as f:\n        rows = json.load(f)\n\n    model =\
+          \ joblib.load(trained_model.path)\n    y_true = [r[\"domain\"] for r in\
+          \ rows]\n    y_pred = model.predict([r[\"skills\"] for r in rows])\n\n \
+          \   accuracy = float(accuracy_score(y_true, y_pred))\n    f1 = float(f1_score(y_true,\
+          \ y_pred, average=\"macro\"))\n\n    metrics.log_metric(\"accuracy\", accuracy)\n\
+          \    metrics.log_metric(\"f1_macro\", f1)\n    metrics.metadata[\"test_rows\"\
+          ] = len(rows)\n    metrics.metadata[\"labels\"] = sorted(set(y_true))\n\
+          \    metrics.metadata[\"confusion_matrix\"] = confusion_matrix(\n      \
+          \  y_true, y_pred, labels=sorted(set(y_true))\n    ).tolist()\n\n    print(f\"\
+          ACCURACY={accuracy:.4f}\")\n    print(f\"F1_MACRO={f1:.4f}\")\n\n"
+        image: python:3.12-slim
+    exec-prepare-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - prepare_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.18.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef prepare_data(\n    raw_csv: str,\n    train_set: Output[Dataset],\n\
+          \    test_set: Output[Dataset],\n    source: Output[Artifact],\n):\n   \
+          \ import csv\n    import hashlib\n    import io\n    import json\n    import\
+          \ random\n\n    rows = list(csv.DictReader(io.StringIO(raw_csv)))\n    if\
+          \ len(rows) < 30:\n        raise ValueError(\"Dataset trop petit\")\n\n\
+          \    if any(not r[\"skills\"] or not r[\"domain\"] for r in rows):\n   \
+          \     raise ValueError(\"Valeur manquante\")\n\n    ids = [r[\"id\"] for\
+          \ r in rows]\n    if len(set(ids)) != len(ids):\n        raise ValueError(\"\
+          IDs dupliqu\xE9s\")\n\n    groups = {}\n    for row in rows:\n        groups.setdefault(row[\"\
+          domain\"], []).append(row)\n\n    if set(groups) != {\"DevOps\", \"Backend\"\
+          , \"MLOps\"}:\n        raise ValueError(\"Classes inattendues\")\n\n   \
+          \ rng = random.Random(42)\n    training, testing = [], []\n\n    for label\
+          \ in sorted(groups):\n        group = groups[label]\n        rng.shuffle(group)\n\
+          \        n_test = max(1, round(len(group) * 0.30))\n        testing.extend(group[:n_test])\n\
+          \        training.extend(group[n_test:])\n\n    with open(train_set.path,\
+          \ \"w\", encoding=\"utf-8\") as f:\n        json.dump(training, f)\n\n \
+          \   with open(test_set.path, \"w\", encoding=\"utf-8\") as f:\n        json.dump(testing,\
+          \ f)\n\n    with open(source.path, \"w\", encoding=\"utf-8\") as f:\n  \
+          \      json.dump({\n            \"sha256\": hashlib.sha256(\n          \
+          \      raw_csv.encode(\"utf-8\")\n            ).hexdigest(),\n         \
+          \   \"rows\": len(rows),\n        }, f)\n\n    print(f\"Train: {len(training)},\
+          \ Test: {len(testing)}\")\n\n"
+        image: python:3.12-slim
+    exec-register-candidate:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - register_candidate
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.18.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef register_candidate(\n    trained_model: Input[Model],\n    metrics:\
+          \ Input[Metrics],\n    gate: Input[Artifact],\n    source: Input[Artifact],\n\
+          \    git_sha: str,\n    manifest: Output[Artifact],\n):\n    import hashlib\n\
+          \    import json\n\n    with open(gate.path, encoding=\"utf-8\") as f:\n\
+          \        verdict = json.load(f)\n\n    if not verdict[\"passed\"]:\n   \
+          \     raise ValueError(\"Candidat refus\xE9\")\n\n    with open(source.path,\
+          \ encoding=\"utf-8\") as f:\n        dataset = json.load(f)\n\n    with\
+          \ open(trained_model.path, \"rb\") as f:\n        model_sha = hashlib.sha256(f.read()).hexdigest()\n\
+          \n    result = {\n        \"status\": \"candidate_only\",\n        \"git_sha\"\
+          : git_sha,\n        \"dataset\": dataset,\n        \"model_sha256\": model_sha,\n\
+          \        \"metrics\": dict(metrics.metadata),\n        \"quality_gate\"\
+          : verdict,\n        \"publication_s3\": False,\n        \"mlflow_registry\"\
+          : False,\n    }\n\n    with open(manifest.path, \"w\", encoding=\"utf-8\"\
+          ) as f:\n        json.dump(result, f, indent=2)\n\n    print(\"CANDIDATE_MANIFEST_CREATED\"\
+          )\n\n"
+        image: python:3.12-slim
+    exec-train-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - train_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'scikit-learn==1.9.1'\
+          \ 'joblib==1.6.0'  &&  python3 -m pip install --quiet --no-warn-script-location\
+          \ 'kfp==2.18.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"\
+          3.9\"' && \"$0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef train_model(\n    train_set: Input[Dataset],\n    trained_model:\
+          \ Output[Model],\n):\n    import json\n\n    import joblib\n    from sklearn.feature_extraction.text\
+          \ import TfidfVectorizer\n    from sklearn.linear_model import LogisticRegression\n\
+          \    from sklearn.pipeline import Pipeline\n\n    with open(train_set.path,\
+          \ encoding=\"utf-8\") as f:\n        rows = json.load(f)\n\n    model =\
+          \ Pipeline([\n        (\"tfidf\", TfidfVectorizer()),\n        (\"classifier\"\
+          , LogisticRegression(\n            C=0.1, max_iter=1000, random_state=42\n\
+          \        )),\n    ])\n\n    model.fit(\n        [r[\"skills\"] for r in\
+          \ rows],\n        [r[\"domain\"] for r in rows],\n    )\n\n    joblib.dump(model,\
+          \ trained_model.path)\n    trained_model.metadata[\"framework\"] = \"scikit-learn\"\
+          \n    trained_model.metadata[\"training_rows\"] = len(rows)\n\n    print(\"\
+          MODEL_TRAINED\")\n\n"
+        image: python:3.12-slim
+    exec-validate-model:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - validate_model
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.18.0'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef validate_model(\n    metrics: Input[Metrics],\n    min_f1: float,\n\
+          \    gate: Output[Artifact],\n):\n    import json\n\n    f1 = float(metrics.metadata[\"\
+          f1_macro\"])\n    passed = f1 >= min_f1\n\n    with open(gate.path, \"w\"\
+          , encoding=\"utf-8\") as f:\n        json.dump({\n            \"passed\"\
+          : passed,\n            \"f1_macro\": f1,\n            \"min_f1\": min_f1,\n\
+          \        }, f)\n\n    if not passed:\n        raise ValueError(\n      \
+          \      f\"QUALITY_GATE_FAILED: F1={f1}, threshold={min_f1}\"\n        )\n\
+          \n    print(\"QUALITY_GATE_PASS\")\n\n"
+        image: python:3.12-slim
+pipelineInfo:
+  name: mini-crm-training-v2
+root:
+  dag:
+    tasks:
+      evaluate-model:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate-model
+        dependentTasks:
+        - prepare-data
+        - train-model
+        inputs:
+          artifacts:
+            test_set:
+              taskOutputArtifact:
+                outputArtifactKey: test_set
+                producerTask: prepare-data
+            trained_model:
+              taskOutputArtifact:
+                outputArtifactKey: trained_model
+                producerTask: train-model
+        taskInfo:
+          name: evaluate-model
+      prepare-data:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-prepare-data
+        inputs:
+          parameters:
+            raw_csv:
+              componentInputParameter: dataset_csv
+        taskInfo:
+          name: prepare-data
+      register-candidate:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-register-candidate
+        dependentTasks:
+        - evaluate-model
+        - prepare-data
+        - train-model
+        - validate-model
+        inputs:
+          artifacts:
+            gate:
+              taskOutputArtifact:
+                outputArtifactKey: gate
+                producerTask: validate-model
+            metrics:
+              taskOutputArtifact:
+                outputArtifactKey: metrics
+                producerTask: evaluate-model
+            source:
+              taskOutputArtifact:
+                outputArtifactKey: source
+                producerTask: prepare-data
+            trained_model:
+              taskOutputArtifact:
+                outputArtifactKey: trained_model
+                producerTask: train-model
+          parameters:
+            git_sha:
+              componentInputParameter: git_sha
+        taskInfo:
+          name: register-candidate
+      train-model:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-train-model
+        dependentTasks:
+        - prepare-data
+        inputs:
+          artifacts:
+            train_set:
+              taskOutputArtifact:
+                outputArtifactKey: train_set
+                producerTask: prepare-data
+        taskInfo:
+          name: train-model
+      validate-model:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-validate-model
+        dependentTasks:
+        - evaluate-model
+        inputs:
+          artifacts:
+            metrics:
+              taskOutputArtifact:
+                outputArtifactKey: metrics
+                producerTask: evaluate-model
+          parameters:
+            min_f1:
+              componentInputParameter: min_f1
+        taskInfo:
+          name: validate-model
+  inputDefinitions:
+    parameters:
+      dataset_csv:
+        parameterType: STRING
+      git_sha:
+        parameterType: STRING
+      min_f1:
+        defaultValue: 0.6
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.18.0
