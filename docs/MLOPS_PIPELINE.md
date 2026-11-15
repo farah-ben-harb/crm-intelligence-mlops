@@ -37,12 +37,15 @@ La CI exécute tests, entraînement, quality gate, contrôles de sécurité et b
 
 ## Kubeflow Pipelines
 
-`pipelines/kubeflow_pipeline.py` définit le contrat composable : `prepare_data → train → evaluate → validate → register`. Le SDK KFP n'est pas une dépendance par défaut ; la compilation nécessite un environnement local dédié avec `kfp`. Aucun pipeline Kubernetes complet n'a été déclaré exécuté.
+`pipelines/kubeflow_pipeline.py` définit le contrat composable : `prepare_data → train → evaluate → validate → register`. Le SDK KFP 2.18.0 est isolé dans `requirements-kfp.txt`. Le pipeline a été compilé et exécuté sur le K3s VMware existant ; le run positif de référence est `eb3e4326-0052-4912-99d8-25f165358a93`.
 
 ## MLflow Model Registry
 
 Le modèle candidat est enregistré dans le Registry MLflow local SQLite sous le
-nom `MiniCRM-Classifier`. L'alias `candidate` désigne la version à tester.
+nom `MiniCRM-Classifier`. L'alias `candidate` désigne la version à tester. Le
+bridge `ml/kfp_mlflow.py` récupère les artefacts SeaweedFS par tunnel local,
+reconstruit les métriques et recharge le modèle par alias avant de déclarer
+le succès.
 
 Le script `ml/register_candidate.py` vérifie le manifeste, le SHA-256 et le
 rechargement du modèle par son alias Registry. Cette opération ne publie pas
@@ -50,10 +53,12 @@ sur S3 et ne modifie pas la production EC2.
 
 ## Preuves et limites
 
-- MLflow est local et SQLite ; aucun serveur public n'est déployé.
+- MLflow est local et SQLite ; aucun serveur public n'est déployé et aucun Pod
+  KFP ne reçoit de credentials AWS.
 - S3 et ECR sont versionnés, mais l'entraînement ne modifie pas la production.
 - Une seule EC2 reste une architecture de démonstration, pas une plateforme hautement disponible.
-- La prochaine étape est un CD OIDC contrôlé, puis l'orchestration KFP et un Model Registry formel sans créer de nouvelles ressources payantes.
+- La publication S3 et le canary EC2 sont des étapes locales explicites ; la
+  promotion production reste soumise à une approbation humaine.
 
 ## Release candidate — 2026-11-15
 
@@ -64,6 +69,18 @@ sur S3 et ne modifie pas la production EC2.
 - F1 macro : `1.0`
 - Quality gate : passed
 - Status : candidate only, production unchanged
+
+## Release KFP final — 2026-11-15
+
+- KFP Run ID : `eb3e4326-0052-4912-99d8-25f165358a93`
+- MLflow Run ID : `00d3027e181043c38f691e65dfaf4b26`
+- Registry : `MiniCRM-Classifier` version `3`, alias `candidate`
+- S3 Key : `candidates/6af74e6521b1b9a278dfea83504b9c4e3dc0cbac/model.joblib`
+- S3 VersionId : `cDCVIV7AwE.FPmDXdcwuVFN8CkdmuRGv`
+- Model SHA-256 : `8652266ea0fef5690c633955e31fcc654efd2357abd538f9c6d4f511e27431d5`
+- S3 manifest VersionId : `euQqQvqLxfymTxXHA8gv2VKjMTqW.f6h`
+- Canary SSM CommandId : `54b08f6f-820a-4ec9-809e-2afc3b18965c`
+- Production : inchangée
 
 ## Orchestration de release
 

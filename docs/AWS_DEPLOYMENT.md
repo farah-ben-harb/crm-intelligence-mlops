@@ -117,6 +117,26 @@ Après un `WhatIf` réussi, l'exécution sans `-WhatIf` valide le canary et Clou
 
 Le déploiement de production conserve un conteneur arrêté `mini-crm-api-rollback-<timestamp>` et sa configuration nécessaire dans le backup distant. En cas d'échec, le conteneur précédent est renommé et redémarré ; un rollback n'est considéré réussi qu'après les quatre contrôles HTTP et la vérification du driver de logs.
 
+## Preuve KFP → MLflow → S3 → canary
+
+La chaîne a été vérifiée avec le candidat suivant, sans promotion production :
+
+```text
+KFP Run ID: eb3e4326-0052-4912-99d8-25f165358a93
+MLflow Run ID: 00d3027e181043c38f691e65dfaf4b26
+Registry: MiniCRM-Classifier version 3, alias candidate
+S3 key: candidates/6af74e6521b1b9a278dfea83504b9c4e3dc0cbac/model.joblib
+S3 model VersionId: cDCVIV7AwE.FPmDXdcwuVFN8CkdmuRGv
+S3 manifest VersionId: euQqQvqLxfymTxXHA8gv2VKjMTqW.f6h
+Model SHA-256: 8652266ea0fef5690c633955e31fcc654efd2357abd538f9c6d4f511e27431d5
+Canary SSM CommandId: 54b08f6f-820a-4ec9-809e-2afc3b18965c
+```
+
+Le rapport `release-canary-report.json` confirme `canary-validated`,
+`production_unchanged=true` et 12 événements CloudWatch récents. Les quatre
+endpoints du canary `8004` et la santé de production `8002` ont répondu ; le
+conteneur production n'a pas été modifié.
+
 ## Persistance du logging CloudWatch
 
 Les scripts deploy-canary, deploy-production et rollback-production

@@ -19,6 +19,14 @@ def test_quality_gate_rejects_low_f1():
         assert_quality(metrics, min_f1_macro=0.80)
 
 
+def test_quality_gate_rejects_impossible_threshold():
+    metrics = {"f1_macro": 1.0, "accuracy": 1.0, "baseline_accuracy": 0.50}
+    result = evaluate_quality(metrics, min_f1_macro=1.01)
+    assert result["passed"] is False
+    with pytest.raises(ValueError, match="quality gate failed"):
+        assert_quality(metrics, min_f1_macro=1.01)
+
+
 def test_manifest_contains_dataset_and_model_hashes(tmp_path, monkeypatch):
     dataset = Path(tmp_path / "profiles.csv")
     model = Path(tmp_path / "model.joblib")
