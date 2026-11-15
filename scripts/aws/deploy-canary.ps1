@@ -49,5 +49,5 @@ $parameterJson = @{ commands = $commands } | ConvertTo-Json -Compress
 $result = & $aws ssm send-command --profile $Profile --region $Region --instance-ids $InstanceId --document-name AWS-RunShellScript --comment "Mini CRM immutable ECR canary" --parameters $parameterJson --output json
 if ($LASTEXITCODE -ne 0) { throw "SSM send-command échoué." }
 $commandId = (($result | ConvertFrom-Json).Command.CommandId).ToString()
-Write-Host "COMMAND_ID=$commandId"
+Write-Output "COMMAND_ID=$commandId"
 Write-Host "Consultez le statut avec : aws ssm get-command-invocation --command-id $commandId --instance-id $InstanceId --profile $Profile --region $Region"
