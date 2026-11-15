@@ -45,3 +45,13 @@ La CI exécute tests, entraînement, quality gate, contrôles de sécurité et b
 - S3 et ECR sont versionnés, mais l'entraînement ne modifie pas la production.
 - Une seule EC2 reste une architecture de démonstration, pas une plateforme hautement disponible.
 - La prochaine étape est un CD OIDC contrôlé, puis l'orchestration KFP et un Model Registry formel sans créer de nouvelles ressources payantes.
+
+## Release candidate — 2026-11-15
+
+- Git SHA : `15667f74f7d4c739513be44467f69fb8482f09b8`
+- S3 Key : `candidates/15667f74f7d4c739513be44467f69fb8482f09b8/model.joblib`
+- S3 VersionId : `e7RV3.zAFX9J6IfEf7jRr2Gnd_Q6v.fH`
+- Model SHA-256 : `93254d2e68b9131ac1ed6605c5242c5a960b045a9b30caee8447f9231c270d0d`
+- F1 macro : `1.0`
+- Quality gate : passed
+- Status : candidate only, production unchanged
