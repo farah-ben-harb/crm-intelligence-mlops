@@ -55,3 +55,9 @@ La CI exécute tests, entraînement, quality gate, contrôles de sécurité et b
 - F1 macro : `1.0`
 - Quality gate : passed
 - Status : candidate only, production unchanged
+
+## Orchestration de release
+
+`scripts/aws/release.ps1` implémente la chaîne `S3 candidate → intégrité → canary → endpoints → CloudWatch → rapport`. Il accepte uniquement une image ECR par digest, une clé `candidates/<git-sha>/model.joblib`, un `VersionId` S3, un SHA-256 et un manifeste dont la quality gate est positive.
+
+Le mode `-WhatIf` ne contacte pas SSM. Le mode canary prépare et vérifie le candidat sans modifier `8002`. La promotion nécessite deux indicateurs explicites (`-Promote -ApproveProduction`) ; un preflight ou un canary vert ne constitue jamais une autorisation de production.

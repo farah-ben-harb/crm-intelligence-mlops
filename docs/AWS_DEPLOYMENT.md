@@ -99,6 +99,24 @@ terraform -chdir=infra/aws validate
 
 Pendant cette phase, `terraform apply` et `terraform destroy` sont interdits. Les ressources AWS existantes ne doivent pas être recréées ni supprimées.
 
+## Release candidate et approbation
+
+Le script `scripts/aws/release.ps1` orchestre le preflight d'une release sans promouvoir automatiquement la production. Il vérifie l'identité AWS, le digest ECR, la clé et la version S3, le manifeste ML et le SHA-256, puis télécharge le candidat sur EC2 et déploie uniquement le canary.
+
+```powershell
+.\scripts\aws\release.ps1 `
+  -Image "251538491265.dkr.ecr.eu-north-1.amazonaws.com/mini-crm-api@sha256:<digest>" `
+  -ModelKey "candidates/<git-sha>/model.joblib" `
+  -ModelVersion "<VersionId>" `
+  -ModelSha256 "<sha256>" `
+  -ManifestPath ".\models\model-manifest.json" `
+  -WhatIf
+```
+
+Après un `WhatIf` réussi, l'exécution sans `-WhatIf` valide le canary et CloudWatch, mais conserve `production_unchanged=true`. La promotion réelle exige explicitement `-Promote -ApproveProduction` et reste une décision humaine.
+
+Le déploiement de production conserve un conteneur arrêté `mini-crm-api-rollback-<timestamp>` et sa configuration nécessaire dans le backup distant. En cas d'échec, le conteneur précédent est renommé et redémarré ; un rollback n'est considéré réussi qu'après les quatre contrôles HTTP et la vérification du driver de logs.
+
 ## Persistance du logging CloudWatch
 
 Les scripts deploy-canary, deploy-production et rollback-production
