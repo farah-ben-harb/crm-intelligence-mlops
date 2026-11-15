@@ -8,7 +8,8 @@ data "aws_iam_policy_document" "s3_model_read" {
     ]
 
     resources = [
-      "${aws_s3_bucket.models.arn}/models/*"
+      "${aws_s3_bucket.models.arn}/models/*",
+      "${aws_s3_bucket.models.arn}/candidates/*"
     ]
   }
 }
@@ -18,3 +19,4 @@ resource "aws_iam_role_policy" "s3_model_read" {
   role   = aws_iam_role.crm_ec2.id
   policy = data.aws_iam_policy_document.s3_model_read.json
 }
+
