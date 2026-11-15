@@ -8,7 +8,9 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 Set-Location $repoRoot
 $env:GIT_SHA = (git rev-parse HEAD).Trim()
 $env:MODEL_VERSION = $env:GIT_SHA
-$env:MODEL_MIN_F1_MACRO = $MinF1Macro
+$env:MODEL_MIN_F1_MACRO = $MinF1Macro.ToString(
+    [System.Globalization.CultureInfo]::InvariantCulture
+)
 $env:MLFLOW_DISABLE_AGENT_HINT = "1"
 
 python ml/validate_data.py
