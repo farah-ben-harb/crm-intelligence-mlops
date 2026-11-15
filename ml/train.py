@@ -24,11 +24,32 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - supports `python ml/train.py`
     from validate_data import DATA_PATH, validate_dataset
 
+try:
+    from ml.manifest import build_manifest, git_sha, sha256_file
+    from ml.quality import DEFAULT_MIN_F1_MACRO, assert_quality, evaluate_quality
+except ModuleNotFoundError:  # pragma: no cover - supports `python ml/train.py`
+    from manifest import build_manifest, git_sha, sha256_file
+    from quality import DEFAULT_MIN_F1_MACRO, assert_quality, evaluate_quality
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "models" / "model.joblib"
 EVALUATION_PATH = BASE_DIR / "models" / "evaluation.json"
 CONFUSION_PATH = BASE_DIR / "models" / "confusion_matrix.csv"
+MANIFEST_PATH = BASE_DIR / "models" / "model-manifest.json"
 RANDOM_STATE = 42
+
+
+def _read_float_env(name: str, default: float) -> float:
+    """Read a decimal environment variable with Windows locale tolerance."""
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    try:
+        return float(raw_value.strip().replace(",", "."))
+    except ValueError as exc:
+        raise ValueError(
+            f"{name} doit être un nombre décimal, reçu: {raw_value!r}"
+        ) from exc
 
 
 def build_model() -> Pipeline:
@@ -79,13 +100,31 @@ def train_and_evaluate() -> dict[str, object]:
     }
 
     MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    EVALUATION_PATH.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     with CONFUSION_PATH.open("w", encoding="utf-8", newline="") as handle:
         handle.write("actual/predicted," + ",".join(labels) + "\n")
         for label, values in zip(labels, matrix, strict=False):
             handle.write(label + "," + ",".join(str(value) for value in values) + "\n")
 
     joblib.dump(build_model().fit(X, y), MODEL_PATH)
+    min_f1_macro = _read_float_env(
+        "MODEL_MIN_F1_MACRO", DEFAULT_MIN_F1_MACRO
+    )
+    quality_gate = evaluate_quality(metrics, min_f1_macro)
+    metrics["quality_gate"] = quality_gate
+    metrics["git_sha"] = git_sha(BASE_DIR)
+    metrics["model_version"] = os.environ.get("MODEL_VERSION", metrics["git_sha"])
+    metrics["dataset_sha256"] = sha256_file(DATA_PATH)
+    metrics["model_sha256"] = sha256_file(MODEL_PATH)
+    EVALUATION_PATH.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
+    manifest = build_manifest(
+        base_dir=BASE_DIR,
+        dataset_path=DATA_PATH,
+        model_path=MODEL_PATH,
+        metrics=metrics,
+        quality_gate=quality_gate,
+    )
+    MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    assert_quality(metrics, min_f1_macro)
     return metrics
 
 
@@ -105,6 +144,10 @@ def log_run(metrics: dict[str, object]) -> None:
                 "dataset_path": str(DATA_PATH.relative_to(BASE_DIR)),
                 "dataset_rows": metrics["rows"],
                 "random_state": RANDOM_STATE,
+                "git_sha": metrics.get("git_sha", "unknown"),
+                "dataset_sha256": metrics["dataset_sha256"],
+                "model_sha256": metrics["model_sha256"],
+                "model_version": metrics["model_version"],
             }
         )
         mlflow.log_metrics(
@@ -117,6 +160,7 @@ def log_run(metrics: dict[str, object]) -> None:
         mlflow.log_artifact(str(MODEL_PATH), artifact_path="model")
         mlflow.log_artifact(str(EVALUATION_PATH), artifact_path="evaluation")
         mlflow.log_artifact(str(CONFUSION_PATH), artifact_path="evaluation")
+        mlflow.log_artifact(str(MANIFEST_PATH), artifact_path="metadata")
         mlflow.sklearn.log_model(
             sk_model=joblib.load(MODEL_PATH),
             name="classifier",

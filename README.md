@@ -4,7 +4,7 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Container Registry](https://img.shields.io/badge/GHCR-mini--crm--api-2496ED?logo=docker&logoColor=white)](https://github.com/farah-ben-harb/crm-intelligence-mlops/pkgs/container/mini-crm-api)
 
-Mini CRM Intelligence est un laboratoire local de classification de profils techniques. Il combine une API FastAPI, un pipeline TF-IDF + Logistic Regression, MLflow, Docker Compose, Ansible, Terraform pour le réseau Docker et une CI GitHub Actions avec contrôles de sécurité.
+Mini CRM Intelligence est une plateforme de démonstration MLOps de classification de profils techniques. Elle combine une API FastAPI, un pipeline TF-IDF + Logistic Regression, Kubeflow Pipelines sur K3s, MLflow, S3/ECR/EC2, Docker Compose, Ansible, Terraform et une CI GitHub Actions avec contrôles de sécurité.
 
 Le projet est un démonstrateur pédagogique basé sur 30 profils synthétiques équilibrés entre `Backend`, `DevOps` et `MLOps`. Il ne constitue pas une mesure de performance sur des profils réels. Aucun déploiement AWS n'est inclus dans l'état actuel du dépôt.
 
@@ -13,7 +13,7 @@ Le projet est un démonstrateur pédagogique basé sur 30 profils synthétiques 
 - `main` est la branche de référence et la CI est verte sur le dernier commit validé.
 - Chaque pull request exécute les tests, Ruff, Bandit, Gitleaks, Trivy, la validation ML et le build Docker.
 - Une image immuable est publiée dans [GHCR](https://github.com/farah-ben-harb/crm-intelligence-mlops/pkgs/container/mini-crm-api) uniquement après un push réussi sur `main`.
-- Le périmètre est volontairement local et pédagogique : aucune ressource AWS n'est créée par le dépôt.
+- La branche `feat/aws-terraform` valide les releases AWS existantes sans créer d'infrastructure ; aucune promotion production n'est automatique.
 
 Dernière exécution de référence : [Mini CRM - DevSecOps CI](https://github.com/farah-ben-harb/crm-intelligence-mlops/actions/runs/40902166984).
 
@@ -29,6 +29,10 @@ graph LR
   C[GitHub Actions] --> Q[quality and security checks]
   Q --> I[Docker image]
   I --> R[GHCR on main]
+  KFP[KFP on K3s] --> MLF[MLflow Registry]
+  MLF --> S3[S3 candidate]
+  S3 --> EC2[EC2 canary]
+  EC2 --> CW[CloudWatch]
 ```
 
 ## Fonctionnalités
@@ -40,6 +44,9 @@ graph LR
 - Validation Pydantic des entrées et réponses `503` si le modèle est indisponible.
 - Entraînement reproductible avec métriques, baseline, validation croisée et matrice de confusion.
 - Suivi MLflow local des paramètres, métriques et artefacts.
+- Exécution KFP v2 réelle sur K3s avec quality gate et manifeste candidat.
+- Import contrôlé des artefacts KFP dans MLflow Registry sous l'alias `candidate`.
+- Publication S3 versionnée et canary EC2 vérifié par SSM, sans modification de la production.
 
 ## Prérequis
 
@@ -104,7 +111,7 @@ curl -X POST http://127.0.0.1:8000/predict \
 
 ## Docker Compose
 
-L'image API contient le modèle et l'image MLflow utilise une base SQLite et un dossier `mlartifacts` montés dans le projet. Le réseau est créé automatiquement par Compose ; Terraform Docker n'est donc pas nécessaire pour un démarrage local simple.
+L'image API contient le modèle et l'image MLflow utilise une base SQLite et un dossier `mlartifacts` montés dans le projet. Le réseau est créé automatiquement par Compose ; Terraform Docker n'est donc pas nécessaire pour un démarrage local simple. Pour le parcours KFP/AWS, consulter [`docs/DEMO.md`](docs/DEMO.md).
 
 ```bash
 New-Item -ItemType Directory -Force mlartifacts     # PowerShell
@@ -129,8 +136,10 @@ Les conteneurs utilisent des utilisateurs non-root. Les ports sont liés à loca
 app/                 API FastAPI et chargement du modèle
 data/                dataset synthétique versionné
 ml/                  génération, validation et entraînement
+pipelines/           contrat de pipeline Kubeflow local
 models/              artefact de modèle servant l'API
 tests/               tests unitaires et API
+scripts/ml/          commande reproductible d'entraînement
 ansible/             préflight, déploiement Compose et vérifications
 terraform/           réseau Docker local
 docs/                audits et plan d'apprentissage AWS
@@ -142,11 +151,12 @@ docs/                audits et plan d'apprentissage AWS
 - Le dataset est synthétique et très petit ; les scores ne sont pas représentatifs d'un usage réel.
 - Le fichier joblib est un artefact binaire qui doit être reconstruit avec les versions épinglées.
 - MLflow utilise SQLite et un stockage local : cette configuration n'est pas une architecture multi-instance.
-- Le déploiement est local et manuel ; aucune ressource AWS n'est créée par la CI.
+- MLflow reste local SQLite pour la démonstration ; l'importateur KFP est exécuté depuis Windows afin de ne pas partager SQLite avec Kubernetes.
+- L'EC2 est une architecture de démonstration à instance unique ; la promotion réelle reste soumise à une approbation humaine.
 
 ## Roadmap
 
-Le plan pédagogique sans exécution Cloud est dans [`docs/AWS_LEARNING_PLAN.md`](docs/AWS_LEARNING_PLAN.md). Les prochaines étapes sont la validation ML sur un jeu indépendant, le durcissement DevSecOps avancé, puis l'apprentissage AWS manuel avec un budget contrôlé.
+Le plan pédagogique AWS est dans [`docs/AWS_LEARNING_PLAN.md`](docs/AWS_LEARNING_PLAN.md). Le pipeline MLOps reproductible est documenté dans [`docs/MLOPS_PIPELINE.md`](docs/MLOPS_PIPELINE.md), l'architecture dans [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), et la démo dans [`docs/DEMO.md`](docs/DEMO.md). La promotion AWS reste explicitement contrôlée.
 
 ## Licence
 

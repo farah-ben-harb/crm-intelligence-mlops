@@ -1,0 +1,4 @@
+# Existing cost-controlled demo constraints; changing these requires an
+# approved Terraform plan and may create new AWS resources or charges.
+AWS-0132
+AWS-0104

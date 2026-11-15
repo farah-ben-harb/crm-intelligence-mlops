@@ -1,10 +1,13 @@
 """HTTP interface for the synthetic profile classifier."""
 
+import hashlib
 import logging
+import os
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
+from app import model
 from app.model import ModelUnavailable, get_model
 
 logger = logging.getLogger("uvicorn.error")
@@ -63,6 +66,25 @@ def readiness_check() -> dict[str, str]:
     except ModelUnavailable as exc:
         raise HTTPException(status_code=503, detail="Model unavailable") from exc
     return {"status": "ready", "model": "loaded"}
+
+
+@app.get("/model-info")
+def model_info() -> dict[str, str]:
+    """Expose the loaded model's deployment metadata."""
+    try:
+        get_model()
+        digest = hashlib.sha256(model.MODEL_PATH.read_bytes()).hexdigest()
+    except (ModelUnavailable, OSError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Model unavailable",
+        ) from exc
+
+    return {
+        "source": os.environ.get("MINI_CRM_MODEL_SOURCE", "bundled"),
+        "version_id": os.environ.get("MINI_CRM_MODEL_VERSION", "not_set"),
+        "sha256": digest,
+    }
 
 
 @app.get("/profiles", response_model=list[Profile])
