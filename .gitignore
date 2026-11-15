@@ -38,6 +38,7 @@ models/model-manifest.json
 .idea/
 .ruff_cache/
 pipelines/local_outputs/
+artifacts/
 
 # Terraform - local files and secrets
 **/.terraform/
