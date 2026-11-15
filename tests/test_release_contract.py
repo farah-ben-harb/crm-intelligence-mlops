@@ -42,6 +42,10 @@ def test_production_deployment_has_lock_and_reversible_backup() -> None:
     assert "MODEL_SOURCE" in script
     assert "ROLLBACK_SUCCESS" in script
     assert "ROLLBACK_FAILED" in script
+    trap_position = script.index("trap rollback_on_exit EXIT")
+    rename_position = script.index('docker rename mini-crm-api "$backup_container"')
+    assert trap_position < rename_position
+    assert 'if docker inspect "$backup_container" >/dev/null 2>&1' in script
 
 
 def test_canary_deployment_returns_command_id_and_has_lock() -> None:
