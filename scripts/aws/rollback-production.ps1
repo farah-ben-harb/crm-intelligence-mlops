@@ -7,6 +7,7 @@ param(
     [string]$InstanceId = "i-049bfd217926eb2b2",
     [string]$Profile = "mini-crm",
     [string]$Region = "eu-north-1",
+    [switch]$UseCloudWatchLogs = $true,
     [switch]$WhatIf
 )
 
@@ -21,16 +22,22 @@ $envArgs = "-e MINI_CRM_MODEL_PATH=/app/models/model.joblib"
 if ($ModelVersion) { $envArgs += " -e MINI_CRM_MODEL_VERSION='$ModelVersion'" }
 if ($ModelSha256) { $envArgs += " -e MINI_CRM_MODEL_SHA256='$ModelSha256'" }
 $checksumCommand = if ($ModelSha256) { "echo '$ModelSha256  $ModelPath' | sha256sum -c -" } else { "echo 'Model SHA non fourni : rollback vers la configuration historique.'" }
+$logArgs = if ($UseCloudWatchLogs) {
+    $stream = "rollback-$(Get-Date -Format yyyyMMdd-HHmmss)"
+    "--log-driver awslogs --log-opt awslogs-region=$Region --log-opt awslogs-group=/mini-crm/api --log-opt awslogs-stream=$stream --log-opt awslogs-create-group=false"
+} else { "" }
+
 $commands = @(
     "set -euo pipefail",
     ("IMAGE='{0}'" -f $PreviousImage),
     ("MODEL_PATH='{0}'" -f $ModelPath),
     ("ENV_ARGS='{0}'" -f $envArgs),
+    ("LOG_ARGS='{0}'" -f $logArgs),
     'test -r "$MODEL_PATH"',
     $checksumCommand,
     'docker pull "$IMAGE"',
     'docker rm -f mini-crm-api 2>/dev/null || true',
-    'docker run -d --name mini-crm-api -p 127.0.0.1:8002:8000 -v "${MODEL_PATH}:/app/models/model.joblib:ro" ${ENV_ARGS} "${IMAGE}"',
+    'docker run -d --name mini-crm-api -p 127.0.0.1:8002:8000 -v "${MODEL_PATH}:/app/models/model.joblib:ro" ${ENV_ARGS} ${LOG_ARGS} "${IMAGE}"',
     "sleep 5",
     'curl -fsS http://127.0.0.1:8002/health',
     'curl -fsS http://127.0.0.1:8002/ready',

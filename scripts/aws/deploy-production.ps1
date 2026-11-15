@@ -8,7 +8,7 @@ param(
     [string]$Profile = "mini-crm",
     [string]$Region = "eu-north-1",
     [string]$LogGroupName = "/mini-crm/api",
-    [switch]$UseCloudWatchLogs,
+    [switch]$UseCloudWatchLogs = $true,
     [switch]$WhatIf
 )
 
@@ -38,7 +38,10 @@ if ($UseCloudWatchLogs) {
     if ($LASTEXITCODE -ne 0 -or -not $group -or $group -ne $LogGroupName) { throw "Le Log Group $LogGroupName n'existe pas encore. Valider Terraform avant d'utiliser awslogs." }
 }
 
-$logArgs = if ($UseCloudWatchLogs) { "--log-driver awslogs --log-opt awslogs-region=$Region --log-opt awslogs-group=$LogGroupName" } else { "" }
+$logArgs = if ($UseCloudWatchLogs) {
+    $stream = "production-release-$(Get-Date -Format yyyyMMdd-HHmmss)"
+    "--log-driver awslogs --log-opt awslogs-region=$Region --log-opt awslogs-group=$LogGroupName --log-opt awslogs-stream=$stream --log-opt awslogs-create-group=false"
+} else { "" }
 $runCommand = 'docker run -d --name mini-crm-api -p 127.0.0.1:8002:8000 -v "${MODEL_PATH}:/app/models/model.joblib:ro" -e MINI_CRM_MODEL_PATH=/app/models/model.joblib -e MINI_CRM_MODEL_SOURCE=s3://' + $bucket + '/models/model.joblib -e MINI_CRM_MODEL_VERSION="${MODEL_VERSION}" -e MINI_CRM_MODEL_SHA256="${MODEL_SHA}" ${LOG_ARGS} "${IMAGE}"'
 $commands = @(
     "set -euo pipefail",

@@ -98,3 +98,15 @@ terraform -chdir=infra/aws validate
 ```
 
 Pendant cette phase, `terraform apply` et `terraform destroy` sont interdits. Les ressources AWS existantes ne doivent pas être recréées ni supprimées.
+
+## Persistance du logging CloudWatch
+
+Les scripts deploy-canary, deploy-production et rollback-production
+configurent maintenant awslogs par defaut avec des log streams distincts.
+
+Chaque nouveau conteneur publie ses logs dans /mini-crm/api.
+Les options peuvent etre inspectees avec -WhatIf.
+
+Attention : les tests WhatIf ne valident pas un rollback reel.
+Avant toute automatisation de production, tester la restauration
+complete de l'image, des variables et des montages en environnement isole.
