@@ -41,6 +41,8 @@ graph LR
 - `GET /ready` : vérifie que l'artefact du modèle est chargeable.
 - `GET /profiles` : trois profils de démonstration en mémoire.
 - `POST /predict` : prédit un domaine à partir d'une chaîne de compétences.
+- Interface dashboard responsive en anglais à `/`, avec profils, prédiction IA,
+  santé du service et détails de l'artefact modèle.
 - Validation Pydantic des entrées et réponses `503` si le modèle est indisponible.
 - Entraînement reproductible avec métriques, baseline, validation croisée et matrice de confusion.
 - Suivi MLflow local des paramètres, métriques et artefacts.
@@ -100,6 +102,11 @@ uvicorn app.main:app --reload
 ```
 
 Documentation interactive : <http://127.0.0.1:8000/docs>.
+
+Dashboard de démonstration : <http://127.0.0.1:8000/>. Le parcours UI est
+documenté dans [`docs/UI_DEMO.md`](docs/UI_DEMO.md). Il consomme exclusivement
+les endpoints FastAPI same-origin et n'ajoute ni base CRM persistante ni
+statistiques simulées.
 
 Exemple :
 

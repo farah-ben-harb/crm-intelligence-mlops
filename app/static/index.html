@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#12152b" />
+    <title>Mini CRM Intelligence</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <div class="brand">
+          <span class="brand-mark">✦</span>
+          <span>Mini CRM <small>Intelligence</small></span>
+        </div>
+        <nav class="nav-list">
+          <a class="nav-item active" href="#overview"><span class="nav-icon">⌂</span>Overview</a>
+          <a class="nav-item" href="#profiles"><span class="nav-icon">◎</span>Profiles</a>
+          <a class="nav-item" href="#prediction"><span class="nav-icon">✧</span>AI Prediction</a>
+          <a class="nav-item" href="#system"><span class="nav-icon">◌</span>System Health</a>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="environment-dot"><span></span>Local intelligence workspace</div>
+          <a class="docs-link" href="/docs" target="_blank" rel="noreferrer">Open API docs <span>↗</span></a>
+        </div>
+      </aside>
+
+      <main class="main-content" id="overview">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">CRM INTELLIGENCE / WORKSPACE</p>
+            <h1>Decision intelligence, at a glance.</h1>
+          </div>
+          <div class="topbar-actions">
+            <span class="live-pill"><span class="pulse"></span>Live API</span>
+            <button class="icon-button" id="refresh-button" type="button" aria-label="Refresh dashboard" title="Refresh dashboard">↻</button>
+            <div class="avatar" aria-label="Workspace user">FB</div>
+          </div>
+        </header>
+
+        <section class="hero-card" aria-labelledby="hero-title">
+          <div class="hero-copy">
+            <p class="hero-kicker">PROFILE INTELLIGENCE</p>
+            <h2 id="hero-title">Turn technical signals into a clear domain direction.</h2>
+            <p>Explore synthetic profiles and use the live classifier to identify the closest technical domain.</p>
+            <a class="primary-button" href="#prediction">Try a prediction <span>→</span></a>
+          </div>
+          <div class="hero-orbit" aria-hidden="true">
+            <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+            <div class="orbit-core">✦</div>
+            <span class="orbit-chip chip-one">ML</span><span class="orbit-chip chip-two">API</span><span class="orbit-chip chip-three">CRM</span>
+          </div>
+        </section>
+
+        <section class="metric-grid" aria-label="System summary">
+          <article class="metric-card">
+            <div class="metric-icon violet">◎</div>
+            <div><p>Profiles indexed</p><strong id="profile-count">—</strong></div>
+            <span class="metric-trend">synthetic</span>
+          </article>
+          <article class="metric-card">
+            <div class="metric-icon blue">✧</div>
+            <div><p>Classifier status</p><strong id="model-status">Checking</strong></div>
+            <span class="status-dot" id="model-status-dot"></span>
+          </article>
+          <article class="metric-card">
+            <div class="metric-icon green">✓</div>
+            <div><p>API liveness</p><strong id="api-status">Checking</strong></div>
+            <span class="status-dot" id="api-status-dot"></span>
+          </article>
+        </section>
+
+        <div class="content-grid">
+          <section class="panel profiles-panel" id="profiles" aria-labelledby="profiles-title">
+            <div class="panel-heading"><div><p class="section-kicker">PEOPLE DIRECTORY</p><h2 id="profiles-title">Profiles</h2></div><span class="panel-caption">In-memory demo profiles</span></div>
+            <div class="profile-list" id="profile-list"><div class="loading-state">Loading profiles...</div></div>
+          </section>
+
+          <section class="panel prediction-panel" id="prediction" aria-labelledby="prediction-title">
+            <div class="panel-heading"><div><p class="section-kicker">LIVE CLASSIFIER</p><h2 id="prediction-title">AI Prediction</h2></div><span class="ai-badge">TF-IDF + ML</span></div>
+            <form id="prediction-form" class="prediction-form">
+              <label for="skills-input">Technical skills</label>
+              <textarea id="skills-input" name="skills" rows="4" maxlength="1000" placeholder="e.g. Python, Docker, Kubernetes, Terraform" required></textarea>
+              <div class="form-footer"><span>Use a comma or space separated skill set.</span><button class="primary-button" type="submit">Predict domain <span>↗</span></button></div>
+            </form>
+            <div class="prediction-result" id="prediction-result" aria-live="polite"><span class="result-spark">✦</span><div><small>YOUR RESULT</small><strong>Enter skills to classify a profile</strong></div></div>
+          </section>
+        </div>
+
+        <div class="content-grid lower-grid">
+          <section class="panel health-panel" id="system" aria-labelledby="health-title">
+            <div class="panel-heading"><div><p class="section-kicker">RUNTIME OBSERVABILITY</p><h2 id="health-title">System Health</h2></div><span class="last-checked" id="last-checked">Not checked</span></div>
+            <div class="health-list">
+              <div class="health-row"><span class="health-label"><span class="health-icon">⌁</span>API liveness</span><span class="health-value" id="health-value">Checking</span></div>
+              <div class="health-row"><span class="health-label"><span class="health-icon">◈</span>Model readiness</span><span class="health-value" id="ready-value">Checking</span></div>
+              <div class="health-row"><span class="health-label"><span class="health-icon">◉</span>Prediction endpoint</span><span class="health-value" id="predict-value">Ready to test</span></div>
+            </div>
+          </section>
+
+          <section class="panel model-panel" aria-labelledby="model-title">
+            <div class="panel-heading"><div><p class="section-kicker">MODEL REGISTRY</p><h2 id="model-title">Model Details</h2></div><span class="model-badge">Verified artifact</span></div>
+            <div class="model-details"><div><span>Source</span><strong id="model-source">—</strong></div><div><span>Version</span><strong class="mono" id="model-version">—</strong></div><div><span>SHA-256</span><button class="hash-button mono" id="model-sha" type="button" title="Copy SHA-256">—</button></div></div>
+          </section>
+        </div>
+        <footer class="page-footer"><span>Mini CRM Intelligence</span><span>Real API data · No fabricated metrics</span></footer>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

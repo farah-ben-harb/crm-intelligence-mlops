@@ -3,20 +3,25 @@
 import hashlib
 import logging
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from app import model
 from app.model import ModelUnavailable, get_model
 
 logger = logging.getLogger("uvicorn.error")
+STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(
     title="Mini CRM Intelligence",
     description="Synthetic profile classification demo",
     version="1.1.0",
 )
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 class Profile(BaseModel):
@@ -50,6 +55,12 @@ PROFILES = [
         skills=["Python", "MLflow", "Machine Learning"],
     ),
 ]
+
+
+@app.get("/", include_in_schema=False)
+def dashboard() -> FileResponse:
+    """Serve the browser dashboard without changing the API contract."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/health")
