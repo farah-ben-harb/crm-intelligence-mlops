@@ -46,6 +46,8 @@ resource "aws_cloudwatch_dashboard" "observability" {
   dashboard_name = "MiniCRM-Observability"
 
   dashboard_body = jsonencode({
+    start          = "-P2D"
+    periodOverride = "inherit"
     widgets = [
       {
         type   = "text"
@@ -163,13 +165,16 @@ resource "aws_cloudwatch_dashboard" "observability" {
         }
       },
       {
-        type   = "text"
+        type   = "log"
         x      = 12
         y      = 16
         width  = 12
         height = 6
         properties = {
-          markdown = "### Telemetry boundaries\nRequest counts, status-code rates and latency are not graphed because reliable structured HTTP fields have not been verified. `ApplicationErrors` counts matching ERROR / Exception / Traceback text in the shared log group; it does not classify deployment versus application origin. Review event context below. Memory and filesystem usage require an agent or application instrumentation and are intentionally not shown."
+          query  = "SOURCE '/mini-crm/api' | parse @message /\"(?<method>GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) (?<path>\\S+) HTTP\\/[0-9.]+\" (?<status>\\d{3})/ | filter ispresent(status) | filter @logStream not like /canary/ | fields toInt(status) as code | stats count(*) as Requests, sum(if(code >= 400 and code < 500, 1, 0)) as HTTP4xx, sum(if(code >= 500, 1, 0)) as HTTP5xx by bin(5m)"
+          region = "eu-north-1"
+          title  = "API · HTTP requests (canary excluded)"
+          view   = "timeSeries"
         }
       },
       {
@@ -222,7 +227,7 @@ resource "aws_cloudwatch_dashboard" "observability" {
         width  = 12
         height = 8
         properties = {
-          query  = "SOURCE '/mini-crm/api' | fields @timestamp, @message | sort @timestamp desc | limit 25"
+          query  = "SOURCE '/mini-crm/api' | fields @timestamp, @logStream, @message | sort @timestamp desc | limit 25"
           region = "eu-north-1"
           title  = "Recent API container logs"
           view   = "table"
@@ -235,7 +240,7 @@ resource "aws_cloudwatch_dashboard" "observability" {
         width  = 12
         height = 8
         properties = {
-          markdown = "### Monitored services\n- **API:** FastAPI in Docker on the existing EC2 instance\n- **Application logs:** `/mini-crm/api` · 7-day retention\n- **Error signal:** `MiniCRM/API · ApplicationErrors`\n- **Alert:** `MiniCRM-EC2-CPUHigh`\n\n[Open the log group](https://eu-north-1.console.aws.amazon.com/cloudwatch/home?region=eu-north-1#logsV2:log-groups/log-group/%252Fmini-crm%252Fapi) · [Open CloudWatch alarms](https://eu-north-1.console.aws.amazon.com/cloudwatch/home?region=eu-north-1#alarmsV2:)"
+          markdown = "### Monitored services\n- **API:** FastAPI in Docker on the existing EC2 instance\n- **Application logs:** `/mini-crm/api` · 7-day retention\n- **Error signal:** `MiniCRM/API · ApplicationErrors` matches ERROR / Exception / Traceback across the shared group; inspect `@logStream` to attribute canary/deployment events.\n- **HTTP chart:** parsed from access logs; canary streams excluded.\n- **Alert:** `MiniCRM-EC2-CPUHigh`\n- **Memory / disk:** not collected; no agent installed.\n\n[Open the log group](https://eu-north-1.console.aws.amazon.com/cloudwatch/home?region=eu-north-1#logsV2:log-groups/log-group/%252Fmini-crm%252Fapi) · [Open CloudWatch alarms](https://eu-north-1.console.aws.amazon.com/cloudwatch/home?region=eu-north-1#alarmsV2:)"
         }
       }
     ]

@@ -67,16 +67,16 @@ Un rollback applicatif restaure l'image et le conteneur. Un rollback ML restaure
 
 `infra/aws/cloudwatch.tf` prépare un Log Group `/mini-crm/api` avec une rétention de 7 jours, un filtre d'erreurs, une alarme CPU EC2 et le dashboard `MiniCRM-Observability`. `cloudwatch_iam.tf` limite le rôle EC2 à `CreateLogStream`, `DescribeLogStreams` et `PutLogEvents` sur ce groupe.
 
-Le dashboard Terraform est organisé en quatre sections sur deux colonnes :
+Le dashboard Terraform proposé comprend 15 widgets organisés en quatre sections sur deux colonnes :
 
 - **Infrastructure Health** : CPU, trafic réseau, contrôles de santé EC2 et opérations EBS.
-- **Application Monitoring** : compteur `MiniCRM/API · ApplicationErrors` et limites de télémétrie HTTP.
+- **Application Monitoring** : compteur `MiniCRM/API · ApplicationErrors` et requêtes/4xx/5xx extraits des logs d'accès.
 - **Reliability & Alerting** : état de l'alarme CPU et historique du compteur d'erreurs.
 - **Operations** : derniers événements du groupe `/mini-crm/api`, rétention, alarme et liens CloudWatch.
 
-Les compteurs HTTP (requêtes, statuts et latence), mémoire et disque ne sont pas présentés comme disponibles : ils nécessitent des champs de logs structurés vérifiés ou une instrumentation/agent, qui ne sont pas activés par cette configuration. Les widgets EC2/EBS demandent uniquement des métriques natives. Leur présence et leurs points récents doivent être confirmés dans le compte ; un widget sans points n'est pas une preuve de collecte.
+Les lignes Uvicorn observées permettent d'extraire les requêtes et statuts HTTP. Le widget les agrège sur 5 minutes et exclut les flux dont le nom contient `canary`. La latence n'est pas disponible dans ces logs. `ApplicationErrors` reste un filtre de mots-clés sur le Log Group partagé; il ne permet pas seul d'attribuer l'erreur à l'API ou au déploiement. Le tableau récent expose `@logStream` pour donner le contexte. Mémoire et disque ne sont pas collectés : aucun agent ni instrumentation n'est activé. Les métriques EC2/EBS affichées ont été observées avec des points récents dans le compte.
 
-Le dashboard contient un seul widget Logs Insights, limité aux 25 événements les plus récents. Une requête Logs Insights facture selon les données analysées et la tarification régionale ; éviter l'actualisation automatique fréquente et réduire la fenêtre temporelle si le groupe grossit. Le groupe conserve les logs 7 jours. Cette modification ne crée ni métrique personnalisée, ni agent, ni alarme supplémentaire. Le coût exact ne peut pas être estimé sans la consommation réelle et le tarif applicable au compte.
+Le dashboard contient deux widgets Logs Insights (agrégation HTTP et événements récents) et s'ouvre sur une fenêtre de 48 heures. Ils s'exécutent au chargement et à chaque actualisation; ne pas configurer d'actualisation fréquente. Un test de requête sur 48 heures a scanné 12 966 octets. La facturation dépend des données réellement analysées et du tarif régional. Le groupe conserve les logs 7 jours. Cette évolution ne crée ni métrique personnalisée, ni agent, ni alarme supplémentaire. Le coût mensuel exact dépend de la fréquence d'ouverture, de la croissance des logs, du tarif de la région et des seuils gratuits du compte.
 
 Avant toute mise à jour du dashboard distant, re-authentifier le profil et enregistrer sa définition actuelle dans un dossier privé hors dépôt :
 
@@ -98,11 +98,15 @@ aws cloudwatch describe-alarms --alarm-names MiniCRM-EC2-CPUHigh --profile mini-
 aws logs describe-log-streams --log-group-name /mini-crm/api --order-by LastEventTime --descending --limit 5 --profile mini-crm --region eu-north-1
 ```
 
-Dans la session d'audit du 16 novembre 2026, l'identité AWS n'a pas pu être vérifiée car la session `mini-crm` avait expiré. La définition distante, les métriques présentes, l'état de l'alarme, les flux d'événements et les permissions effectives restent donc à revalider après réauthentification. Aucune mise à jour AWS n'a été effectuée. Avant l'application approuvée, comparer le backup au JSON Terraform et vérifier un plan sans remplacement ni destruction.
+L'audit AWS en lecture seule du 16 novembre 2026 a confirmé le compte et sauvegardé le dashboard avant toute proposition de mise à jour. Le dashboard distant contient toujours 2 widgets, et sa définition égale le state Terraform. L'instance était `running`, l'alarme CPU `OK`, et les métriques CPU, réseau, status checks et EBS avaient des points récents. `ApplicationErrors` n'avait aucun point sur les dernières 24 heures. Sur une fenêtre de 48 heures, une requête Insights a trouvé 46 requêtes hors canary (0 HTTP 4xx/5xx) et scanné 12 966 octets. Les permissions CloudWatch d'écriture des logs ont été simulées comme autorisées; la création et suppression du Log Group étaient refusées. Aucune mise à jour AWS n'a été effectuée.
 
-Le scan Checkov local du 16 novembre 2026 a réussi 90 contrôles et échoué 10. Les contrôles signalent notamment : chiffrement KMS et rétention d'un an pour les logs (`CKV_AWS_158`, `CKV_AWS_338`), detailed monitoring et IP publique de l'EC2 (`CKV_AWS_126`, `CKV_AWS_88`), chiffrement KMS ECR (`CKV_AWS_136`) et exigences S3 de notifications, access logging, réplication, lifecycle et KMS (`CKV2_AWS_62`, `CKV_AWS_18`, `CKV_AWS_144`, `CKV2_AWS_61`, `CKV_AWS_145`). Ces résultats couvrent l'infrastructure existante et ne sont pas causés par la définition du dashboard. Aucun de ces changements n'est appliqué ici : certains entraînent des coûts ou modifient la sécurité/la rétention de ressources existantes et demandent une décision distincte. Le bucket reste configuré selon les protections déjà présentes dans Terraform.
+La configuration EC2 garde `ebs_optimized = false`, valeur observée sur l'instance existante. Le passer à `true` forcerait un remplacement EC2 selon le plan Terraform. Toute proposition de dashboard doit rester limitée à une mise à jour en place de `MiniCRM-Observability`; arrêter si le plan montre un remplacement ou une modification non prévue.
 
-Le driver Docker `awslogs` n'est activé par la promotion que si le Log Group existe déjà (`-UseCloudWatchLogs`). Tant que le state Terraform officiel n'est pas récupéré, aucun Log Group, rôle ou alarme n'est créé automatiquement.
+Le contrôle final du plan ciblé sauvegardé confirme `0 to add, 1 to change, 0 to destroy`; le dashboard est mis à jour en place et EC2 reste `no-op`. Le plan complet contient aussi quatre changements en place hors périmètre (scan-on-push ECR, politique IAM ECR et descriptions des deux règles egress) : ne pas l'appliquer pour cette livraison. Le backend Terraform configuré est local (`default`), sans bloc backend distant. Le state local courant est le state utilisé par le plan, et son contenu de dashboard égale la définition AWS distante. Les artefacts de plan sont conservés hors dépôt avec les autres fichiers privés. La mise à jour CloudWatch réelle reste en attente d'approbation explicite.
+
+Le scan Checkov de référence a 10 contrôles préexistants. L'alignement Terraform sur l'EC2 existante (`EbsOptimized=false`) fait apparaître en plus `CKV_AWS_135`; changer ce paramètre à `true` demanderait le remplacement de l'instance et reste hors périmètre. Aucun contrôle n'est masqué. Le détail des constats, leur comparaison à la référence et les risques figurent dans [l'audit de sécurité Terraform](SECURITY_BASELINE_AUDIT.md). Les corrections éventuelles des risques préexistants sont séparées de cette livraison.
+
+Le driver Docker `awslogs` n'est activé par la promotion que si le Log Group existe déjà (`-UseCloudWatchLogs`). Le state Terraform local existe et reste ignoré par Git; ne jamais le publier ni le remplacer par un state inventé.
 
 ```mermaid
 flowchart LR
