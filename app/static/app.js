@@ -39,6 +39,7 @@ function renderProfiles(profiles) {
       $("#sample-note").textContent = `Selected profile: ${profile.name}`;
       $("#prediction").scrollIntoView({ behavior: "smooth", block: "center" });
       $("#skills-input").focus({ preventScroll: true });
+      analyzeSkills(profile.skills.join(", "));
     });
   });
 }
@@ -58,8 +59,10 @@ async function fetchJson(path, options = {}) {
 }
 
 async function loadDashboard() {
+  const refresh = $("#refresh-button");
+  refresh.classList.add("is-refreshing");
+  refresh.disabled = true;
   const checkedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  $("#last-checked").textContent = `Checked ${checkedAt}`;
   try {
     const [profiles, health, ready] = await Promise.all([
       fetchJson("/profiles"), fetchJson("/health"), fetchJson("/ready"),
@@ -71,6 +74,7 @@ async function loadDashboard() {
     setStatus($("#model-status"), ready.status === "ready" ? "Ready" : "Unavailable", ready.status === "ready");
     setStatus($("#ready-value"), ready.status === "ready" ? "Loaded" : ready.status, ready.status === "ready");
     $("#api-status-dot").classList.add("ok"); $("#model-status-dot").classList.add("ok");
+    $("#last-checked").textContent = `Updated ${checkedAt}`;
     const sample = profiles[0];
     if (sample && !$("#skills-input").value.trim()) {
       $("#skills-input").value = sample.skills.join(", ");
@@ -82,7 +86,11 @@ async function loadDashboard() {
     setStatus($("#api-status"), "Unavailable", false); setStatus($("#model-status"), "Unavailable", false);
     $("#api-status-dot").classList.add("error"); $("#model-status-dot").classList.add("error");
     setStatus($("#health-value"), "Unavailable", false); setStatus($("#ready-value"), "Unavailable", false);
+    $("#last-checked").textContent = `Checked ${checkedAt}`;
     renderError("#profile-list", error.message || "The API is unavailable.");
+  } finally {
+    refresh.classList.remove("is-refreshing");
+    refresh.disabled = false;
   }
 }
 
@@ -109,4 +117,12 @@ $("#prediction-form").addEventListener("submit", async (event) => {
 
 $("#refresh-button").addEventListener("click", loadDashboard);
 $("#profile-search").addEventListener("input", () => renderProfiles(state.profiles));
+const sectionObserver = new IntersectionObserver((entries) => {
+  entries.filter((entry) => entry.isIntersecting).forEach((entry) => {
+    document.querySelectorAll(".nav-item").forEach((link) => {
+      link.classList.toggle("active", link.getAttribute("href") === `#${entry.target.id}`);
+    });
+  });
+}, { rootMargin: "-25% 0px -60% 0px" });
+document.querySelectorAll("#profiles, #prediction, #system").forEach((section) => sectionObserver.observe(section));
 loadDashboard();
