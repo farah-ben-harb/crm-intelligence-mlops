@@ -26,7 +26,17 @@ function renderProfiles(profiles) {
       <div><h3>${escapeHtml(profile.name)}</h3><div class="skill-list">
         ${profile.skills.map((skill) => `<span class="skill">${escapeHtml(skill)}</span>`).join("")}
       </div></div>
+      <button class="profile-action" type="button" data-profile-id="${escapeHtml(profile.id)}" aria-label="Explore role fit for ${escapeHtml(profile.name)}">Explore fit <span>↗</span></button>
     </article>`).join("");
+  document.querySelectorAll(".profile-action").forEach((button) => {
+    button.addEventListener("click", () => {
+      const profile = profiles.find((item) => String(item.id) === button.dataset.profileId);
+      if (!profile) return;
+      $("#skills-input").value = profile.skills.join(", ");
+      $("#prediction").scrollIntoView({ behavior: "smooth", block: "center" });
+      $("#skills-input").focus({ preventScroll: true });
+    });
+  });
 }
 
 function renderError(selector, message) {
@@ -72,13 +82,13 @@ $("#prediction-form").addEventListener("submit", async (event) => {
   const skills = $("#skills-input").value.trim();
   if (!skills) return;
   button.disabled = true; button.innerHTML = "Predicting…";
-  result.classList.remove("success"); result.querySelector("strong").textContent = "Contacting the live classifier…";
+  result.classList.remove("success"); result.querySelector("small").textContent = "FINDING A ROLE DIRECTION"; result.querySelector("strong").textContent = "Reviewing these skills…";
   try {
     const prediction = await fetchJson("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ skills }) });
-    result.classList.add("success"); result.querySelector("strong").textContent = prediction.domain;
+    result.classList.add("success"); result.querySelector("small").textContent = "SUGGESTED ROLE FAMILY"; result.querySelector("strong").textContent = prediction.domain;
     setStatus($("#predict-value"), "Responding", true);
   } catch (error) {
-    result.querySelector("strong").textContent = error.message || "Prediction unavailable";
+    result.querySelector("small").textContent = "ROLE DIRECTION"; result.querySelector("strong").textContent = "We couldn't assess this profile right now. Please try again.";
     setStatus($("#predict-value"), "Unavailable", false);
   } finally { button.disabled = false; button.innerHTML = "Find role fit <span>↗</span>"; }
 });
