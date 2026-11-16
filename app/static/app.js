@@ -75,7 +75,8 @@ async function loadDashboard() {
     if (sample && !$("#skills-input").value.trim()) {
       $("#skills-input").value = sample.skills.join(", ");
       $("#sample-note").textContent = `Ready to explore: ${sample.name}`;
-      await analyzeSkills(sample.skills.join(", "));
+      $("#prediction-result").querySelector("small").textContent = "PROFILE READY";
+      $("#prediction-result").querySelector("strong").textContent = "Select Find role fit to see a live result";
     }
   } catch (error) {
     setStatus($("#api-status"), "Unavailable", false); setStatus($("#model-status"), "Unavailable", false);
