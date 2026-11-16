@@ -61,7 +61,7 @@
           </article>
           <article class="metric-card">
             <div class="metric-icon blue">✧</div>
-            <div><p>Talent intelligence</p><strong id="model-status">Checking</strong></div>
+            <div><p>Role fit ready</p><strong id="model-status">Checking</strong></div>
             <span class="status-dot" id="model-status-dot"></span>
           </article>
           <article class="metric-card">
@@ -90,17 +90,21 @@
 
         <div class="content-grid lower-grid">
           <section class="panel health-panel" id="system" aria-labelledby="health-title">
-            <div class="panel-heading"><div><p class="section-kicker">WORKSPACE STATUS</p><h2 id="health-title">Workspace status</h2></div><span class="last-checked" id="last-checked">Not checked</span></div>
+            <div class="panel-heading"><div><p class="section-kicker">WORKSPACE STATUS</p><h2 id="health-title">Ready for your next conversation</h2></div><span class="last-checked" id="last-checked">Checking</span></div>
             <div class="health-list">
               <div class="health-row"><span class="health-label"><span class="health-icon">⌁</span>Workspace</span><span class="health-value" id="health-value">Checking</span></div>
-              <div class="health-row"><span class="health-label"><span class="health-icon">◈</span>Talent intelligence</span><span class="health-value" id="ready-value">Checking</span></div>
-              <div class="health-row"><span class="health-label"><span class="health-icon">◉</span>Role fit analysis</span><span class="health-value" id="predict-value">Ready to test</span></div>
+              <div class="health-row"><span class="health-label"><span class="health-icon">◈</span>Role matching</span><span class="health-value" id="ready-value">Checking</span></div>
+              <div class="health-row"><span class="health-label"><span class="health-icon">◉</span>Decision support</span><span class="health-value" id="predict-value">Ready to use</span></div>
             </div>
           </section>
 
-          <section class="panel model-panel" aria-labelledby="model-title">
-            <div class="panel-heading"><div><p class="section-kicker">INTELLIGENCE ENGINE</p><h2 id="model-title">Matching profile</h2></div><span class="model-badge">Verified</span></div>
-            <div class="model-details"><div><span>Profile source</span><strong id="model-source">—</strong></div><div><span>Engine version</span><strong class="mono" id="model-version">—</strong></div><div><span>Verification fingerprint</span><button class="hash-button mono" id="model-sha" type="button" title="Copy verification fingerprint">—</button></div></div>
+          <section class="panel value-panel" aria-labelledby="value-title">
+            <div class="panel-heading"><div><p class="section-kicker">CRM VALUE</p><h2 id="value-title">Make talent easier to understand</h2></div><span class="model-badge">Simple and clear</span></div>
+            <div class="value-list">
+              <div class="value-row"><span class="value-icon">◎</span><div><strong>See the full picture</strong><p>Bring skills and profile context together in one view.</p></div></div>
+              <div class="value-row"><span class="value-icon">✧</span><div><strong>Find a role direction</strong><p>Use skills as a starting point for a focused conversation.</p></div></div>
+              <div class="value-row"><span class="value-icon">↗</span><div><strong>Move from insight to action</strong><p>Turn a profile review into a practical next step.</p></div></div>
+            </div>
           </section>
         </div>
         <footer class="page-footer"><span>Mini CRM Intelligence</span><span>Focused on clear, explainable talent decisions</span></footer>

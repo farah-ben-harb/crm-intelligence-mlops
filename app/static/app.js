@@ -1,6 +1,6 @@
 const $ = (selector) => document.querySelector(selector);
 
-const state = { profiles: [], modelInfo: null };
+const state = { profiles: [] };
 
 function setStatus(element, value, ok = null) {
   element.textContent = value;
@@ -47,25 +47,21 @@ async function loadDashboard() {
   const checkedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   $("#last-checked").textContent = `Checked ${checkedAt}`;
   try {
-    const [profiles, health, ready, modelInfo] = await Promise.all([
-      fetchJson("/profiles"), fetchJson("/health"), fetchJson("/ready"), fetchJson("/model-info"),
+    const [profiles, health, ready] = await Promise.all([
+      fetchJson("/profiles"), fetchJson("/health"), fetchJson("/ready"),
     ]);
-    state.profiles = profiles; state.modelInfo = modelInfo;
+    state.profiles = profiles;
     renderProfiles(profiles);
     setStatus($("#api-status"), health.status === "healthy" ? "Healthy" : health.status, health.status === "healthy");
     setStatus($("#health-value"), health.status === "healthy" ? "Operational" : health.status, health.status === "healthy");
     setStatus($("#model-status"), ready.status === "ready" ? "Ready" : ready.status, ready.status === "ready");
     setStatus($("#ready-value"), ready.status === "ready" ? "Loaded" : ready.status, ready.status === "ready");
     $("#api-status-dot").classList.add("ok"); $("#model-status-dot").classList.add("ok");
-    $("#model-source").textContent = modelInfo.source || "Not reported";
-    $("#model-version").textContent = modelInfo.version_id || "Not reported";
-    $("#model-sha").textContent = modelInfo.sha256 || "Not reported";
   } catch (error) {
     setStatus($("#api-status"), "Unavailable", false); setStatus($("#model-status"), "Unavailable", false);
     $("#api-status-dot").classList.add("error"); $("#model-status-dot").classList.add("error");
     setStatus($("#health-value"), "Unavailable", false); setStatus($("#ready-value"), "Unavailable", false);
     renderError("#profile-list", error.message || "The API is unavailable.");
-    $("#model-source").textContent = "Unavailable"; $("#model-version").textContent = "Unavailable"; $("#model-sha").textContent = "Unavailable";
   }
 }
 
@@ -88,10 +84,4 @@ $("#prediction-form").addEventListener("submit", async (event) => {
 });
 
 $("#refresh-button").addEventListener("click", loadDashboard);
-$("#model-sha").addEventListener("click", async () => {
-  const value = $("#model-sha").textContent;
-  if (!value || value === "—" || value === "Unavailable") return;
-  try { await navigator.clipboard.writeText(value); $("#toast").textContent = "Model SHA copied"; $("#toast").classList.add("show"); setTimeout(() => $("#toast").classList.remove("show"), 1800); } catch (_) { /* clipboard is optional */ }
-});
-
 loadDashboard();

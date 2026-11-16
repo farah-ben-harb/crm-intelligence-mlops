@@ -62,3 +62,9 @@ body { background:radial-gradient(circle at 78% -10%,#e8e7ff 0,transparent 34%),
 .model-details strong,.hash-button { font-size:11px; }
 .page-footer { font-size:9px; font-weight:600; }
 .sidebar-note { display:block; max-width:150px; color:#6f7495; font-size:10px; line-height:1.5; }
+.value-list { display:grid; gap:13px; }
+.value-row { display:flex; align-items:flex-start; gap:11px; padding-bottom:13px; border-bottom:1px solid #f0f0f5; }
+.value-row:last-child { padding-bottom:0; border-bottom:0; }
+.value-icon { flex:none; width:30px; height:30px; display:grid; place-items:center; border-radius:9px; color:#6357e8; background:#efedff; font-size:16px; }
+.value-row strong { display:block; margin:1px 0 4px; color:#454961; font:600 12px 'Space Grotesk',sans-serif; }
+.value-row p { margin:0; color:#999caf; font-size:10px; line-height:1.45; }
