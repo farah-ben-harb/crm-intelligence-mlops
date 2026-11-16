@@ -106,5 +106,6 @@ body { font-family:'Inter','Segoe UI',sans-serif; background:#f5f6fa; }
 .value-row strong { min-height:30px; }
 .value-row p { font-size:9px; }
 .empty-state { padding:22px 4px; color:#8f93a8; font-size:11px; }
+.demo-note { display:block; margin-top:7px; color:#7c7f99; font-size:9px; }
 @media (max-width:1050px) { .value-list { grid-template-columns:1fr; }.value-row { display:flex; padding:10px 0; border:0; border-bottom:1px solid #f0f0f5; border-radius:0; }.value-icon { margin:0; }.value-row strong { min-height:0; } }
 @media (max-width:700px) { .main-content { padding-top:20px; }.topbar-subtitle { max-width:250px; }.topbar h1 { font-size:25px; }.hero-card { min-height:220px; padding:22px; }.hero-copy h2 { font-size:24px; }.panel { padding:17px; }.profile-action { font-size:9px; } }

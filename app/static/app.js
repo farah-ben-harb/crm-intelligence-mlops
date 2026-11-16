@@ -36,6 +36,7 @@ function renderProfiles(profiles) {
       const profile = profiles.find((item) => String(item.id) === button.dataset.profileId);
       if (!profile) return;
       $("#skills-input").value = profile.skills.join(", ");
+      $("#demo-note").textContent = `Sample profile loaded: ${profile.name}`;
       $("#prediction").scrollIntoView({ behavior: "smooth", block: "center" });
       $("#skills-input").focus({ preventScroll: true });
     });
@@ -70,6 +71,12 @@ async function loadDashboard() {
     setStatus($("#model-status"), ready.status === "ready" ? "Ready" : "Unavailable", ready.status === "ready");
     setStatus($("#ready-value"), ready.status === "ready" ? "Loaded" : ready.status, ready.status === "ready");
     $("#api-status-dot").classList.add("ok"); $("#model-status-dot").classList.add("ok");
+    const sample = profiles[0];
+    if (sample && !$("#skills-input").value.trim()) {
+      $("#skills-input").value = sample.skills.join(", ");
+      $("#demo-note").textContent = `Live demo sample: ${sample.name}`;
+      await analyzeSkills(sample.skills.join(", "));
+    }
   } catch (error) {
     setStatus($("#api-status"), "Unavailable", false); setStatus($("#model-status"), "Unavailable", false);
     $("#api-status-dot").classList.add("error"); $("#model-status-dot").classList.add("error");
@@ -78,11 +85,9 @@ async function loadDashboard() {
   }
 }
 
-$("#prediction-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const button = event.currentTarget.querySelector("button");
+async function analyzeSkills(skills) {
+  const button = $("#prediction-form").querySelector("button");
   const result = $("#prediction-result");
-  const skills = $("#skills-input").value.trim();
   if (!skills) return;
   button.disabled = true; button.innerHTML = "Predicting…";
   result.classList.remove("success"); result.querySelector("small").textContent = "FINDING A ROLE DIRECTION"; result.querySelector("strong").textContent = "Reviewing these skills…";
@@ -94,6 +99,11 @@ $("#prediction-form").addEventListener("submit", async (event) => {
     result.querySelector("small").textContent = "ROLE DIRECTION"; result.querySelector("strong").textContent = "We couldn't assess this profile right now. Please try again.";
     setStatus($("#predict-value"), "Unavailable", false);
   } finally { button.disabled = false; button.innerHTML = "Find role fit <span>↗</span>"; }
+}
+
+$("#prediction-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await analyzeSkills($("#skills-input").value.trim());
 });
 
 $("#refresh-button").addEventListener("click", loadDashboard);
