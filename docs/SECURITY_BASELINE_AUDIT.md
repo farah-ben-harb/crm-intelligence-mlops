@@ -1,7 +1,7 @@
 # Audit des résultats Checkov Terraform
 
-**Date de l'audit :** 16 novembre 2026  
-**Configuration de référence :** commit `d7de067` sur `feat/aws-terraform`  
+**Date de l'audit :** 16 novembre 2026
+**Configuration de référence :** commit `d7de067` sur `feat/aws-terraform`
 **Périmètre :** `infra/aws`; aucun correctif de ressource AWS appliqué.
 
 ## Comparaison
