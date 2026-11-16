@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 :root { --ink:#16182b; --muted:#8589a3; --line:#e9eaf2; --panel:#fff; --bg:#f6f7fb; --violet:#6d5dfc; --blue:#4f9cf9; --green:#36bd8c; --shadow:0 16px 40px rgba(33,32,74,.06); }
 * { box-sizing:border-box; }
@@ -73,3 +73,38 @@ body { background:radial-gradient(circle at 78% -10%,#e8e7ff 0,transparent 34%),
 .profile-action:hover { color:#fff; border-color:#6d5dfc; background:#6d5dfc; transform:translateY(-1px); }
 .profile-action span { margin-left:4px; }
 @media (max-width:480px) { .profile-action { padding:6px 7px; font-size:8px; } }
+/* Compact CRM layout: keep the directory and matching action in focus. */
+body { font-family:'Inter','Segoe UI',sans-serif; background:#f5f6fa; }
+.brand,.topbar h1,.hero-copy h2,.panel-heading h2,.profile-item h3,.metric-card strong { font-family:'Inter','Segoe UI',sans-serif; }
+.main-content { padding-top:27px; padding-bottom:20px; }
+.topbar { margin-bottom:20px; align-items:center; }
+.topbar-subtitle { margin:6px 0 0; color:#8589a3; font-size:12px; }
+.topbar h1 { font-size:30px; letter-spacing:-1px; }
+.hero-card { min-height:188px; padding:25px 32px; margin-bottom:15px; }
+.hero-copy h2 { max-width:520px; font-size:27px; }
+.hero-copy p:not(.hero-kicker) { margin-bottom:16px; }
+.hero-orbit { transform:scale(.82); transform-origin:center right; }
+.metric-grid { gap:12px; margin-bottom:15px; }
+.metric-card { min-height:76px; padding:13px 15px; }
+.content-grid { gap:15px; margin-bottom:15px; }
+.panel { padding:20px; border-radius:16px; }
+.panel-heading { margin-bottom:14px; }
+.panel-intro { margin:5px 0 0; color:#9397aa; font-size:10px; }
+.profile-search-wrap { display:flex; align-items:center; gap:8px; height:36px; padding:0 11px; margin:0 0 8px; border:1px solid #e9eaf1; border-radius:9px; color:#9094a9; background:#fafbfe; }
+.profile-search-wrap span { font-size:18px; }
+.profile-search-wrap input { width:100%; border:0; outline:0; color:#34374e; background:transparent; font:500 10px 'Inter',sans-serif; }
+.profile-search-wrap input::placeholder { color:#a5a8b8; }
+.profile-item { gap:10px; padding:10px 0; }
+.profile-avatar { width:33px; height:33px; border-radius:9px; }
+.skill { padding:3px 6px; }
+.prediction-form textarea { min-height:93px; }
+.prediction-result { min-height:58px; margin-top:13px; }
+.lower-grid { grid-template-columns:.9fr 1.1fr; }
+.value-list { grid-template-columns:repeat(3,1fr); gap:10px; }
+.value-row { display:block; padding:10px; border:1px solid #eff0f6; border-radius:11px; }
+.value-icon { margin-bottom:8px; }
+.value-row strong { min-height:30px; }
+.value-row p { font-size:9px; }
+.empty-state { padding:22px 4px; color:#8f93a8; font-size:11px; }
+@media (max-width:1050px) { .value-list { grid-template-columns:1fr; }.value-row { display:flex; padding:10px 0; border:0; border-bottom:1px solid #f0f0f5; border-radius:0; }.value-icon { margin:0; }.value-row strong { min-height:0; } }
+@media (max-width:700px) { .main-content { padding-top:20px; }.topbar-subtitle { max-width:250px; }.topbar h1 { font-size:25px; }.hero-card { min-height:220px; padding:22px; }.hero-copy h2 { font-size:24px; }.panel { padding:17px; }.profile-action { font-size:9px; } }

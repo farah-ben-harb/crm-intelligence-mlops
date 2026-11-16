@@ -19,15 +19,18 @@ function escapeHtml(value) {
 }
 
 function renderProfiles(profiles) {
+  const query = $("#profile-search").value.trim().toLowerCase();
+  const visible = profiles.filter((profile) => `${profile.name} ${profile.skills.join(" ")}`.toLowerCase().includes(query));
   $("#profile-count").textContent = profiles.length;
-  $("#profile-list").innerHTML = profiles.map((profile) => `
+  $("#profile-caption").textContent = query ? `${visible.length} matching` : `${profiles.length} demo records`;
+  $("#profile-list").innerHTML = visible.length ? visible.map((profile) => `
     <article class="profile-item">
       <div class="profile-avatar">${escapeHtml(initials(profile.name))}</div>
       <div><h3>${escapeHtml(profile.name)}</h3><div class="skill-list">
         ${profile.skills.map((skill) => `<span class="skill">${escapeHtml(skill)}</span>`).join("")}
       </div></div>
       <button class="profile-action" type="button" data-profile-id="${escapeHtml(profile.id)}" aria-label="Explore role fit for ${escapeHtml(profile.name)}">Explore fit <span>↗</span></button>
-    </article>`).join("");
+    </article>`).join("") : '<div class="empty-state">No profiles match that search. Try a name or skill.</div>';
   document.querySelectorAll(".profile-action").forEach((button) => {
     button.addEventListener("click", () => {
       const profile = profiles.find((item) => String(item.id) === button.dataset.profileId);
@@ -64,7 +67,7 @@ async function loadDashboard() {
     renderProfiles(profiles);
     setStatus($("#api-status"), health.status === "healthy" ? "Healthy" : health.status, health.status === "healthy");
     setStatus($("#health-value"), health.status === "healthy" ? "Operational" : health.status, health.status === "healthy");
-    setStatus($("#model-status"), ready.status === "ready" ? "Ready" : ready.status, ready.status === "ready");
+    setStatus($("#model-status"), ready.status === "ready" ? "Ready" : "Unavailable", ready.status === "ready");
     setStatus($("#ready-value"), ready.status === "ready" ? "Loaded" : ready.status, ready.status === "ready");
     $("#api-status-dot").classList.add("ok"); $("#model-status-dot").classList.add("ok");
   } catch (error) {
@@ -94,4 +97,5 @@ $("#prediction-form").addEventListener("submit", async (event) => {
 });
 
 $("#refresh-button").addEventListener("click", loadDashboard);
+$("#profile-search").addEventListener("input", () => renderProfiles(state.profiles));
 loadDashboard();
