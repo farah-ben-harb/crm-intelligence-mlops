@@ -61,3 +61,4 @@ body { background:radial-gradient(circle at 78% -10%,#e8e7ff 0,transparent 34%),
 .model-details span { font-size:9px; font-weight:700; letter-spacing:.15px; }
 .model-details strong,.hash-button { font-size:11px; }
 .page-footer { font-size:9px; font-weight:600; }
+.sidebar-note { display:block; max-width:150px; color:#6f7495; font-size:10px; line-height:1.5; }

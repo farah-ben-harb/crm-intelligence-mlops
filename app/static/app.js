@@ -84,7 +84,7 @@ $("#prediction-form").addEventListener("submit", async (event) => {
   } catch (error) {
     result.querySelector("strong").textContent = error.message || "Prediction unavailable";
     setStatus($("#predict-value"), "Unavailable", false);
-  } finally { button.disabled = false; button.innerHTML = "Predict domain <span>↗</span>"; }
+  } finally { button.disabled = false; button.innerHTML = "Find role fit <span>↗</span>"; }
 });
 
 $("#refresh-button").addEventListener("click", loadDashboard);

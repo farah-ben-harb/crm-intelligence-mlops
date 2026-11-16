@@ -39,3 +39,10 @@ def test_dashboard_does_not_expose_infrastructure_identifiers() -> None:
 
     assert "251538491265" not in response.text
     assert "i-049bfd217926eb2b2" not in response.text
+
+
+def test_dashboard_copy_does_not_expose_api_routes() -> None:
+    response = client.get("/")
+
+    for route in ("/health", "/ready", "/profiles", "/predict", "/docs"):
+        assert route not in response.text
