@@ -22,7 +22,10 @@ def test_static_assets_are_served() -> None:
     assert stylesheet.status_code == 200
     assert stylesheet.headers["content-type"].startswith("text/css")
     assert script.status_code == 200
-    assert script.headers["content-type"].startswith("application/javascript")
+    assert script.headers["content-type"].split(";", maxsplit=1)[0] in {
+        "application/javascript",
+        "text/javascript",
+    }
     assert 'fetchJson("/profiles")' in script.text
     assert 'fetchJson("/predict"' in script.text
 
