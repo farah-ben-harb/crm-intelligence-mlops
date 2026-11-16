@@ -49,3 +49,10 @@ def test_dashboard_copy_does_not_expose_api_routes() -> None:
 
     for route in ("/health", "/ready", "/profiles", "/predict", "/docs"):
         assert route not in response.text
+
+
+def test_dashboard_copy_avoids_demo_wording() -> None:
+    response = client.get("/")
+
+    assert "demo" not in response.text.lower()
+    assert "sample profiles" in response.text.lower()

@@ -54,6 +54,23 @@ PROFILES = [
         name="Thomas Bernard",
         skills=["Python", "MLflow", "Machine Learning"],
     ),
+    Profile(id=4, name="Maya Laurent", skills=["Java", "Spring Boot", "PostgreSQL"]),
+    Profile(id=5, name="Noah Petit", skills=["Kubernetes", "Helm", "Prometheus"]),
+    Profile(id=6, name="Lina Moreau", skills=["Python", "FastAPI", "PostgreSQL"]),
+    Profile(id=7, name="Adam Girard", skills=["AWS", "Terraform", "Docker"]),
+    Profile(id=8, name="Ines Roux", skills=["scikit-learn", "MLflow", "Python"]),
+    Profile(id=9, name="Hugo Fontaine", skills=["C#", ".NET", "SQL Server"]),
+    Profile(id=10, name="Sara Chevalier", skills=["GitHub Actions", "Docker", "Linux"]),
+    Profile(id=11, name="Leo Francois", skills=["JavaScript", "React", "Node.js"]),
+    Profile(id=12, name="Nora Legrand", skills=["PyTorch", "Python", "Model serving"]),
+    Profile(id=13, name="Ethan Garnier", skills=["Azure", "Terraform", "PowerShell"]),
+    Profile(id=14, name="Jade Faure", skills=["Go", "REST APIs", "PostgreSQL"]),
+    Profile(id=15, name="Louis Andre", skills=["Jenkins", "Ansible", "Kubernetes"]),
+    Profile(id=16, name="Mila Mercier", skills=["Pandas", "SQL", "Data analysis"]),
+    Profile(id=17, name="Yanis Blanc", skills=["AWS", "ECR", "EC2"]),
+    Profile(id=18, name="Emma Guerin", skills=["Python", "Airflow", "MLflow"]),
+    Profile(id=19, name="Rayan Muller", skills=["Linux", "Bash", "Nginx"]),
+    Profile(id=20, name="Chloe Henry", skills=["TypeScript", "React", "AWS"]),
 ]
 
 

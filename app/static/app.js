@@ -22,7 +22,7 @@ function renderProfiles(profiles) {
   const query = $("#profile-search").value.trim().toLowerCase();
   const visible = profiles.filter((profile) => `${profile.name} ${profile.skills.join(" ")}`.toLowerCase().includes(query));
   $("#profile-count").textContent = profiles.length;
-  $("#profile-caption").textContent = query ? `${visible.length} matching` : `${profiles.length} demo records`;
+  $("#profile-caption").textContent = query ? `${visible.length} matching` : `${profiles.length} sample profiles`;
   $("#profile-list").innerHTML = visible.length ? visible.map((profile) => `
     <article class="profile-item">
       <div class="profile-avatar">${escapeHtml(initials(profile.name))}</div>
@@ -36,7 +36,7 @@ function renderProfiles(profiles) {
       const profile = profiles.find((item) => String(item.id) === button.dataset.profileId);
       if (!profile) return;
       $("#skills-input").value = profile.skills.join(", ");
-      $("#demo-note").textContent = `Sample profile loaded: ${profile.name}`;
+      $("#sample-note").textContent = `Selected profile: ${profile.name}`;
       $("#prediction").scrollIntoView({ behavior: "smooth", block: "center" });
       $("#skills-input").focus({ preventScroll: true });
     });
@@ -74,7 +74,7 @@ async function loadDashboard() {
     const sample = profiles[0];
     if (sample && !$("#skills-input").value.trim()) {
       $("#skills-input").value = sample.skills.join(", ");
-      $("#demo-note").textContent = `Live demo sample: ${sample.name}`;
+      $("#sample-note").textContent = `Ready to explore: ${sample.name}`;
       await analyzeSkills(sample.skills.join(", "));
     }
   } catch (error) {

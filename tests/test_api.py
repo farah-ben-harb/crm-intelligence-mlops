@@ -28,7 +28,7 @@ def test_health():
 def test_profiles():
     response = client.get("/profiles")
     assert response.status_code == 200
-    assert len(response.json()) == 3
+    assert len(response.json()) == 20
     assert response.json()[0]["skills"] == ["Python", "Docker", "Linux"]
 
 
